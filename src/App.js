@@ -125,7 +125,7 @@ const CoinPicker = ({ value, onChange, prices, savedKey, knownCoins, fmpStocks }
       setLocalResults(combined.slice(0, 30));
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => searchCoins(val), 350);
+    debounceRef.current = setTimeout(() => searchCoins(val), 250);
   };
 
   const selectCoin = (coin) => {
@@ -372,15 +372,7 @@ const AuthScreen = ({ onLogin }) => {
   };
   const saveUsers = (users) => localStorage.setItem("ip_users", JSON.stringify(users));
 
-  // Simple hash for password storage (client-side only, not production-grade)
-  const hashPass = async (pass) => {
-    const enc = new TextEncoder().encode(pass + "_ip_salt_2026");
-    const buf = await crypto.subtle.digest("SHA-256", enc);
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-  };
-  const verifyPass = async (pass, hash) => (await hashPass(pass)) === hash;
-
-  const handleRegister = async () => {
+  const handleRegister = () => {
     if (!username.trim() || !email.trim() || !password || !confirmPass) { setError("Tüm alanları doldurun"); return; }
     if (username.trim().length < 3) { setError("Kullanıcı adı en az 3 karakter olmalı"); return; }
     if (!/\S+@\S+\.\S+/.test(email)) { setError("Geçerli bir e-posta girin"); return; }
@@ -390,25 +382,20 @@ const AuthScreen = ({ onLogin }) => {
     if (users[username.trim().toLowerCase()]) { setError("Bu kullanıcı adı zaten kayıtlı"); return; }
     if (Object.values(users).find(u => u.email === email.trim().toLowerCase())) { setError("Bu e-posta zaten kayıtlı"); return; }
     setLoading(true); setError("");
-    const hashed = await hashPass(password);
     setTimeout(() => {
-      users[username.trim().toLowerCase()] = { name: username.trim(), email: email.trim().toLowerCase(), password: hashed, created: new Date().toISOString() };
+      users[username.trim().toLowerCase()] = { name: username.trim(), email: email.trim().toLowerCase(), password: btoa(password), created: new Date().toISOString() };
       saveUsers(users);
       setLoading(false); setSuccess("Hesap oluşturuldu! Şimdi giriş yapabilirsiniz.");
       setTimeout(() => { setMode("login"); setSuccess(""); setPassword(""); setConfirmPass(""); }, 1500);
     }, 1000);
   };
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     if (!username.trim() || !password) { setError("Kullanıcı adı ve şifre gerekli"); return; }
     const users = getUsers();
     const user = users[username.trim().toLowerCase()];
     if (!user) { setError("Kullanıcı bulunamadı"); return; }
-    // Backward compat: eski btoa hash'leri de destekle
-    let valid = false;
-    try { valid = await verifyPass(password, user.password); } catch(e) {}
-    if (!valid) { try { valid = atob(user.password) === password; } catch(e) {} }
-    if (!valid) { setError("Şifre yanlış"); return; }
+    if (atob(user.password) !== password) { setError("Şifre yanlış"); return; }
     setLoading(true); setError("");
     setTimeout(() => {
       if (rememberMe) localStorage.setItem("ip_session", JSON.stringify({ user: user.name }));
@@ -541,187 +528,6 @@ const AuthScreen = ({ onLogin }) => {
           div[style*="width:480"]{width:100%!important}
         }
       `}</style>
-    </div>
-  );
-};
-
-// ═══ Halka Arz (IPO) Tab Component ═══
-const IPO_CACHE_KEY = "ip_ipo_cache";
-const IPO_CACHE_TTL = 3600000; // 1 saat
-
-// Türk halka arz verileri — bilinen/yaklaşan
-const getTurkishIPOs = () => {
-  const today = new Date();
-  const y = today.getFullYear();
-  return [
-    { id:"TR_SELEN_2026",company:"Selen Çelik",symbol:"SELEN.IS",exchange:"BIST Yıldız",date:`${y}-03-15`,priceRange:"25.50 - 28.00 ₺",price:0,shares:50000000,marketCap:0,status:"upcoming",market:"bist",source:"KAP",description:"Selen Çelik halka arz bilgilendirmesi. Detaylar için KAP'ı takip edin." },
-    { id:"TR_TUSAS_2024",company:"Türk Havacılık Savunma Sanayi (TUSAS)",symbol:"TUSAS.IS",exchange:"BIST Yıldız",date:"2024-12-19",priceRange:"100 ₺",price:100,shares:200000000,marketCap:0,status:"completed",market:"bist",source:"KAP",description:"TUSAŞ, Türkiye'nin en büyük havacılık ve savunma şirketi. BIST tarihindeki en büyük halka arzlardan biri." },
-    { id:"TR_TABGD_2025",company:"Taze Balık Gıda",symbol:"TABGD.IS",exchange:"BIST Yıldız",date:"2025-06-10",priceRange:"12.00 - 14.50 ₺",price:13.25,shares:30000000,marketCap:0,status:"completed",market:"bist",source:"KAP",description:"Gıda sektörü halka arzı." },
-    { id:"TR_GRTRK_2025",company:"Gratis",symbol:"GRTRK.IS",exchange:"BIST Yıldız",date:"2025-03-20",priceRange:"85.00 - 95.00 ₺",price:90,shares:80000000,marketCap:0,status:"completed",market:"bist",source:"KAP",description:"Türkiye'nin önde gelen kozmetik ve kişisel bakım perakendecisi." },
-  ];
-};
-
-const IpoTab = ({ T, st }) => {
-  const [ipoData, setIpoData] = useState([]);
-  const [ipoLoading, setIpoLoading] = useState(true);
-  const [ipoError, setIpoError] = useState(null);
-  const [ipoFilter, setIpoFilter] = useState("upcoming");
-  const [ipoSearch, setIpoSearch] = useState("");
-  const [expandedIpo, setExpandedIpo] = useState(null);
-  const [ipoAlerts, setIpoAlerts] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("ip_ipo_alerts") || "[]"); } catch(e) { return []; }
-  });
-
-  useEffect(() => {
-    const fetchIPOs = async () => {
-      setIpoLoading(true);
-      setIpoError(null);
-      try {
-        const cached = JSON.parse(localStorage.getItem(IPO_CACHE_KEY) || "{}");
-        if (cached.data && cached.ts && (Date.now() - cached.ts < IPO_CACHE_TTL)) {
-          setIpoData(cached.data); setIpoLoading(false); return;
-        }
-      } catch(e) {}
-
-      const allIPOs = [];
-      const FMP_KEY = process.env.REACT_APP_FMP_KEY || "00rEssEWw276o3NRJY1BcLH1ACQGb1D6";
-      const today = new Date();
-      const from = new Date(today - 90 * 86400000).toISOString().split("T")[0];
-      const to = new Date(today.getTime() + 90 * 86400000).toISOString().split("T")[0];
-
-      try {
-        const res = await fetch(`https://financialmodelingprep.com/api/v3/ipo_calendar?from=${from}&to=${to}&apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(15000) });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            data.forEach(ipo => {
-              allIPOs.push({
-                id: ipo.symbol || ipo.company,
-                company: ipo.company || "Bilinmiyor",
-                symbol: ipo.symbol || "",
-                exchange: ipo.exchange || "",
-                date: ipo.date || "",
-                priceRange: ipo.priceRange || "",
-                price: ipo.price || 0,
-                shares: ipo.numberOfShares || 0,
-                marketCap: ipo.marketCap || 0,
-                status: new Date(ipo.date) > today ? "upcoming" : "completed",
-                market: (ipo.exchange || "").includes("Istanbul") || (ipo.exchange || "").includes("BIST") ? "bist" : "us",
-                source: "FMP",
-              });
-            });
-          }
-        }
-      } catch(e) {}
-
-      getTurkishIPOs().forEach(ipo => { if (!allIPOs.find(x => x.symbol === ipo.symbol)) allIPOs.push(ipo); });
-      allIPOs.sort((a, b) => new Date(b.date) - new Date(a.date));
-      setIpoData(allIPOs); setIpoLoading(false);
-      try { localStorage.setItem(IPO_CACHE_KEY, JSON.stringify({ data: allIPOs, ts: Date.now() })); } catch(e) {}
-    };
-    fetchIPOs();
-  }, []);
-
-  const toggleAlert = (ipoId) => {
-    setIpoAlerts(prev => {
-      const next = prev.includes(ipoId) ? prev.filter(x => x !== ipoId) : [...prev, ipoId];
-      try { localStorage.setItem("ip_ipo_alerts", JSON.stringify(next)); } catch(e) {}
-      return next;
-    });
-  };
-
-  const now = new Date();
-  const filtered = ipoData.filter(ipo => {
-    const ms = ipo.company.toLowerCase().includes(ipoSearch.toLowerCase()) || (ipo.symbol||"").toLowerCase().includes(ipoSearch.toLowerCase());
-    const d = new Date(ipo.date);
-    if (ipoFilter === "upcoming") return ms && d >= now;
-    if (ipoFilter === "recent") return ms && d < now && d >= new Date(now - 60*86400000);
-    return ms;
-  });
-  const upcomingCount = ipoData.filter(x => new Date(x.date) >= now).length;
-  const recentCount = ipoData.filter(x => { const d=new Date(x.date); return d<now && d>=new Date(now-60*86400000); }).length;
-
-  return (
-    <div style={{animation:"fadeUp .4s ease-out"}}>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,marginBottom:20}}>
-        <div style={{...st.card,background:T.gradientHero,border:`1px solid ${T.accent}22`}}>
-          <div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Yaklaşan Halka Arzlar</div>
-          <div style={{fontSize:28,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"#9333EA"}}>{upcomingCount}</div>
-          <div style={{fontSize:12,color:T.textMuted,marginTop:4}}>Önümüzdeki 3 ay</div>
-        </div>
-        <div style={st.card}>
-          <div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Son Halka Arzlar</div>
-          <div style={{fontSize:28,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.green}}>{recentCount}</div>
-          <div style={{fontSize:12,color:T.textMuted,marginTop:4}}>Son 60 gün</div>
-        </div>
-        <div style={st.card}>
-          <div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Hatırlatmalarım</div>
-          <div style={{fontSize:28,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"#D4A017"}}>{ipoAlerts.length}</div>
-          <div style={{fontSize:12,color:T.textMuted,marginTop:4}}>Takip edilen</div>
-        </div>
-      </div>
-
-      <div style={st.card}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <h3 style={{fontSize:15,fontWeight:600}}>Halka Arz Takvimi</h3>
-            <div style={{display:"flex",gap:2,background:T.bgInput,borderRadius:6,padding:2}}>
-              {[{k:"upcoming",l:`Yaklaşan (${upcomingCount})`},{k:"recent",l:`Tamamlanan (${recentCount})`},{k:"all",l:"Tümü"}].map(f=>
-                <button key={f.k} onClick={()=>setIpoFilter(f.k)} style={{padding:"5px 12px",borderRadius:5,border:"none",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",background:ipoFilter===f.k?"#9333EA22":"transparent",color:ipoFilter===f.k?"#9333EA":T.textMuted}}>{f.l}</button>)}
-            </div>
-          </div>
-          <input style={{padding:"8px 14px",background:T.bgInput,border:`1px solid ${T.borderLight}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",width:180,fontFamily:"'Inter',sans-serif"}} placeholder="Şirket veya sembol ara..." value={ipoSearch} onChange={e=>setIpoSearch(e.target.value)}/>
-        </div>
-
-        {ipoLoading ? <div style={{textAlign:"center",padding:60,color:T.textMuted}}><div style={{fontSize:40,marginBottom:12,animation:"spin 1s linear infinite",display:"inline-block"}}>◌</div><div>Halka arz verileri yükleniyor...</div></div>
-        : filtered.length === 0 ? <div style={{textAlign:"center",padding:60,color:T.textMuted}}><div style={{fontSize:48,marginBottom:12}}>📋</div><div>{ipoFilter==="upcoming"?"Yaklaşan halka arz bulunamadı":"Sonuç bulunamadı"}</div></div>
-        : <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {filtered.map((ipo,i) => {
-              const isUp = new Date(ipo.date)>=now;
-              const days = Math.ceil((new Date(ipo.date)-now)/86400000);
-              const isExp = expandedIpo===ipo.id;
-              const hasAl = ipoAlerts.includes(ipo.id);
-              const mc = ipo.market==="bist"?"#3B82F6":"#9333EA";
-              return (
-                <div key={ipo.id+i} style={{background:T.bgInput,border:`1px solid ${isExp?mc+"44":T.border}`,borderRadius:12,overflow:"hidden",transition:"all .2s"}}>
-                  <div onClick={()=>setExpandedIpo(isExp?null:ipo.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",cursor:"pointer"}}
-                    onMouseEnter={e=>e.currentTarget.style.background=T.bgCardSolid+"aa"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <div style={{width:42,height:42,borderRadius:10,background:mc+"15",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:18}}>{isUp?"🚀":"✅"}</span></div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
-                        <span style={{fontWeight:600,fontSize:14,color:T.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ipo.company}</span>
-                        {ipo.symbol&&<span style={{fontSize:11,padding:"2px 6px",borderRadius:4,background:mc+"15",color:mc,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>{ipo.symbol}</span>}
-                        <span style={{fontSize:9,padding:"1px 5px",borderRadius:3,background:ipo.market==="bist"?"#3B82F618":"#9333EA18",color:ipo.market==="bist"?"#3B82F6":"#9333EA",fontWeight:700}}>{ipo.market==="bist"?"BIST":"US"}</span>
-                      </div>
-                      <div style={{fontSize:11,color:T.textMuted}}>{ipo.exchange||"—"}</div>
-                    </div>
-                    <div style={{textAlign:"right",flexShrink:0}}>
-                      <div style={{fontSize:13,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:isUp?T.green:T.textSecondary}}>{new Date(ipo.date).toLocaleDateString("tr-TR",{day:"2-digit",month:"short",year:"numeric"})}</div>
-                      {isUp&&days>=0&&<div style={{fontSize:11,color:"#D4A017",fontWeight:600}}>{days===0?"Bugün!":`${days} gün kaldı`}</div>}
-                      {!isUp&&ipo.price>0&&<div style={{fontSize:11,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>${ipo.price}</div>}
-                    </div>
-                    <button onClick={e=>{e.stopPropagation();toggleAlert(ipo.id);}} style={{width:34,height:34,borderRadius:8,border:`1px solid ${hasAl?"#D4A01744":T.borderLight}`,background:hasAl?"#D4A01715":"transparent",color:hasAl?"#D4A017":T.textMuted,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:16,flexShrink:0}} title={hasAl?"Hatırlatmayı kaldır":"Hatırlatma ekle"}>{hasAl?"🔔":"🔕"}</button>
-                    <span style={{color:T.textMuted,fontSize:12,flexShrink:0}}>{isExp?"▲":"▼"}</span>
-                  </div>
-                  {isExp&&<div style={{padding:"0 16px 16px",borderTop:`1px solid ${T.border}`,animation:"fadeUp .2s ease-out"}}>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginTop:12}}>
-                      {ipo.priceRange&&<div style={{background:T.bgCardSolid,borderRadius:8,padding:12}}><div style={{fontSize:10,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Fiyat Aralığı</div><div style={{fontSize:14,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{ipo.priceRange}</div></div>}
-                      {ipo.price>0&&<div style={{background:T.bgCardSolid,borderRadius:8,padding:12}}><div style={{fontSize:10,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Halka Arz Fiyatı</div><div style={{fontSize:14,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:T.green}}>${ipo.price}</div></div>}
-                      {ipo.shares>0&&<div style={{background:T.bgCardSolid,borderRadius:8,padding:12}}><div style={{fontSize:10,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Pay Adedi</div><div style={{fontSize:14,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{(ipo.shares/1e6).toFixed(1)}M</div></div>}
-                      {ipo.marketCap>0&&<div style={{background:T.bgCardSolid,borderRadius:8,padding:12}}><div style={{fontSize:10,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Piyasa Değeri</div><div style={{fontSize:14,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>${(ipo.marketCap/1e9).toFixed(2)}B</div></div>}
-                      <div style={{background:T.bgCardSolid,borderRadius:8,padding:12}}><div style={{fontSize:10,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Durum</div><div style={{fontSize:14,fontWeight:600,color:isUp?T.green:T.textSecondary}}>{isUp?"⏳ Bekliyor":"✅ Tamamlandı"}</div></div>
-                    </div>
-                    {ipo.description&&<div style={{marginTop:12,fontSize:12,color:T.textSecondary,lineHeight:1.6,background:T.bgCardSolid,borderRadius:8,padding:12}}>{ipo.description}</div>}
-                  </div>}
-                </div>
-              );
-            })}
-          </div>}
-      </div>
-      <div style={{...st.card,marginTop:16,padding:16,background:T.bgSecondary}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:16}}>ℹ️</span><span style={{fontSize:13,fontWeight:600,color:T.textSecondary}}>Halka Arz Bilgilendirmesi</span></div>
-        <div style={{fontSize:12,color:T.textMuted,lineHeight:1.6}}>Veriler FMP API ve KAP kaynaklarından alınmaktadır. BIST halka arzları için resmi kaynak <span style={{color:"#3B82F6",cursor:"pointer"}} onClick={()=>window.open("https://www.kap.org.tr","_blank")}>kap.org.tr</span> adresini takip edin. Halka arz tarihleri ve fiyatları değişiklik gösterebilir. Yatırım tavsiyesi değildir.</div>
-      </div>
     </div>
   );
 };
@@ -967,14 +773,8 @@ export default function CryptoPortfolio() {
       const allPrices = {};
       let source = "";
 
-      // 1) Binance Spot + Futures + CoinGecko Markets — PARALEL
-      const [binData, futData, cgMarkets] = await Promise.allSettled([
-        fetchAllBinance(),
-        fetchAllFutures(),
-        fetchCoinGeckoMarkets(),
-      ]).then(results => results.map(r => r.status === "fulfilled" ? r.value : null));
-
-      // Process Binance Spot
+      // 1) Binance Spot — all USDT pairs, instant
+      const binData = await fetchAllBinance();
       if (binData) {
         const allCoins = new Set([...DEFAULT_COINS.map(c=>c.id), ...knownCoins.map(c=>c.id), ...Object.values(portfolios).flat().map(p=>p.coinId)]);
         allCoins.forEach(coinId => {
@@ -991,7 +791,8 @@ export default function CryptoPortfolio() {
         source = `Spot: ${Object.keys(allPrices).length}`;
       }
 
-      // 1.5) Process Binance Futures Perpetual — mark price, funding rate
+      // 1.5) Binance Futures Perpetual — mark price, funding rate
+      const futData = await fetchAllFutures();
       if (futData) {
         const allCoins = new Set([...DEFAULT_COINS.map(c=>c.id), ...knownCoins.map(c=>c.id), ...Object.values(portfolios).flat().map(p=>p.coinId)]);
         let perpCount = 0;
@@ -1029,7 +830,8 @@ export default function CryptoPortfolio() {
         source += ` + Perp: ${perpCount}`;
       }
 
-      // 2) Process CoinGecko markets — top 250 (fills 7d change + market cap + missing coins)
+      // 2) CoinGecko markets — top 250 (fills 7d change + market cap + missing coins)
+      const cgMarkets = await fetchCoinGeckoMarkets();
       if (cgMarkets) {
         Object.entries(cgMarkets).forEach(([id, data]) => {
           if (!allPrices[id]) {
@@ -1064,7 +866,7 @@ export default function CryptoPortfolio() {
       }
 
       // 4) Hisse/ETF — BIST için Yahoo (Vercel proxy), US için FMP
-      const FMP_KEY = process.env.REACT_APP_FMP_KEY || "00rEssEWw276o3NRJY1BcLH1ACQGb1D6";
+      const FMP_KEY = "00rEssEWw276o3NRJY1BcLH1ACQGb1D6";
       const portfolioStockIds = [...new Set(Object.values(portfolios).flat().map(p=>p.coinId).filter(id=>isStock(id)))];
       const allStockIds = Object.keys(STOCK_DATA);
       const stocksToFetch = [...new Set([...portfolioStockIds, ...allStockIds.slice(0, 80)])];
@@ -1077,9 +879,8 @@ export default function CryptoPortfolio() {
         const results = {};
         let stockSource = "";
 
-        // A) US + BIST paralel fetch — her ikisi aynı anda başlar
-        const fetchUS = async () => {
-          if (usStocks.length === 0) return;
+        // A) US hisseleri → FMP API (CORS-free, hızlı)
+        if (usStocks.length > 0) {
           for (let i = 0; i < usStocks.length; i += 50) {
             const batch = usStocks.slice(i, i + 50);
             try {
@@ -1105,10 +906,10 @@ export default function CryptoPortfolio() {
             } catch (e) {}
             if (i + 50 < usStocks.length) await new Promise(r => setTimeout(r, 300));
           }
-        };
+        }
 
-        const fetchBIST = async () => {
-          if (bistStocks.length === 0) return;
+        // B) BIST hisseleri → Yahoo Finance (Vercel proxy)
+        if (bistStocks.length > 0) {
           for (let i = 0; i < bistStocks.length; i += 50) {
             const batch = bistStocks.slice(i, i + 50);
             try {
@@ -1135,10 +936,7 @@ export default function CryptoPortfolio() {
             } catch (e) {}
             if (i + 50 < bistStocks.length) await new Promise(r => setTimeout(r, 500));
           }
-        };
-
-        // Paralel çalıştır — US ve BIST aynı anda
-        await Promise.allSettled([fetchUS(), fetchBIST()]);
+        }
 
         if (Object.keys(results).length > 0) {
           Object.assign(allPrices, results);
@@ -1685,22 +1483,19 @@ export default function CryptoPortfolio() {
             <div style={{fontSize:9,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,textTransform:"uppercase"}}>Portföy Yönetim Sistemi</div>
           </div>
           <div style={{width:8,height:8,borderRadius:"50%",marginLeft:4,background:connStatus==="connected"?T.green:connStatus==="connecting"||connStatus==="retrying"?"#EAB308":T.red,boxShadow:`0 0 8px ${connStatus==="connected"?T.greenGlow:"rgba(239,68,68,.3)"}`,transition:"background .3s"}} title={connStatus==="connected"?"Canlı veri":connStatus==="connecting"?"Bağlanıyor...":"Hata"}/>
-          {lastUpdate&&<span style={{fontSize:10,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace",marginLeft:2}}>{lastUpdate.toLocaleTimeString("tr-TR")}</span>}
+
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
           <span style={{fontSize:12,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>👤 {currentUser}</span>
-          <button onClick={generateReport} style={{background:T.accentGlow,border:`1px solid ${T.accent}33`,color:T.accent,padding:"0 12px",height:34,borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:4,position:"relative"}} title="PDF Rapor Oluştur">📄 Rapor{showReportNotif&&<span style={{position:"absolute",top:-2,right:-2,width:8,height:8,background:T.red,borderRadius:"50%",border:`2px solid ${T.bg}`}}/>}</button>
-          <button onClick={()=>setShowReportHistory(true)} style={{background:T.bgCardSolid,border:`1px solid ${T.border}`,color:T.textSecondary,width:34,height:34,borderRadius:8,cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}} title="Rapor Geçmişi">📋</button>
           <button onClick={toggleTheme} style={{background:T.bgCardSolid,border:`1px solid ${T.border}`,color:T.textSecondary,width:34,height:34,borderRadius:8,cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s"}} title={themeMode==="dark"?"Açık Tema":"Koyu Tema"}>{themeMode==="dark"?"☀":"🌙"}</button>
-          <button onClick={()=>setShowSettings(true)} style={{background:T.bgCardSolid,border:`1px solid ${T.border}`,color:T.textSecondary,width:34,height:34,borderRadius:8,cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}} title="Ayarlar">⚙</button>
+
           <button onClick={()=>{setIsLoggedIn(false);setCurrentUser("");try{localStorage.removeItem("ip_session");}catch(e){}}} style={{background:T.redGlow,border:`1px solid ${T.red}33`,color:T.red,padding:"0 12px",height:34,borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'Inter',sans-serif"}}>Çıkış</button>
         </div>
       </header>
       {/* Loading indicator — header altında ince bar */}
       {isLoading&&<div style={{width:"100%",height:2,background:T.border,overflow:"hidden"}}><div style={{height:"100%",background:`linear-gradient(90deg,${T.accent},${T.gold},${T.accent})`,backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite linear"}}/></div>}
-      <ConnBar status={connStatus} retryCount={retryCount} lastUpdate={lastUpdate} refreshInterval={refreshInterval} onRefreshChange={setRefreshInterval} apiMode={apiMode} onRetry={retry} rateLimitInfo={rateLimitInfo}/>
       <nav style={{display:"flex",gap:4,padding:"10px 24px",borderBottom:`1px solid ${T.border}`,overflowX:"auto",background:T.bgSecondary}}>
-        {[{id:"overview",lbl:"Dashboard",ic:"⊞"},{id:"portfolio",lbl:"Portföy",ic:"◎"},{id:"chart",lbl:"Grafik",ic:"◈"},{id:"market",lbl:"Piyasa",ic:"◉"},{id:"ipo",lbl:"Halka Arz",ic:"◆"}].map(t=>
+        {[{id:"overview",lbl:"Dashboard",ic:"⊞"},{id:"portfolio",lbl:"Portföy",ic:"◎"},{id:"reports",lbl:"Raporlar",ic:"📄"}].map(t=>
           <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"9px 18px",background:tab===t.id?T.accentGlow:"transparent",border:tab===t.id?`1px solid ${T.accent}33`:"1px solid transparent",color:tab===t.id?T.accent:T.textMuted,fontSize:13,fontWeight:tab===t.id?600:500,cursor:"pointer",borderRadius:8,display:"flex",alignItems:"center",gap:6,fontFamily:"'Inter',sans-serif",position:"relative",whiteSpace:"nowrap",transition:"all .2s"}}>
             <span style={{fontSize:16}}>{t.ic}</span>{t.lbl}
           </button>)}
@@ -1997,132 +1792,71 @@ export default function CryptoPortfolio() {
           </div>
         </div>}
 
-        {/* ═══ MARKET ═══ */}
-        {tab==="market"&&<div style={{animation:"fadeUp .4s ease-out"}}><div style={st.card}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-              <h3 style={{fontSize:15,fontWeight:600}}>Piyasa</h3>
-              {/* Market filter */}
-              <div style={{display:"flex",gap:2,background:T.bgInput,borderRadius:6,padding:2}}>
-                {[{k:"all",l:"Tümü"},{k:"crypto",l:"Kripto"},{k:"bist",l:"BIST"},{k:"us",l:"ABD"},{k:"tefas",l:"TEFAS"}].map(f=>(
-                  <button key={f.k} onClick={()=>setMarketFilter(f.k)} style={{padding:"5px 12px",borderRadius:5,border:"none",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",background:marketFilter===f.k?getMarketColor(f.k)+"22":"transparent",color:marketFilter===f.k?getMarketColor(f.k):T.textMuted}}>{f.l}</button>
-                ))}
+        {/* ═══ REPORTS ═══ */}
+        {tab==="reports"&&<div style={{animation:"fadeUp .4s ease-out"}}>
+          {/* Report Actions */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16,marginBottom:24}}>
+            <div style={{...st.card,padding:24,display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:16,background:T.gradientHero,border:`1px solid ${T.accent}22`}}>
+              <div style={{width:56,height:56,borderRadius:16,background:T.accentGlow,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>📊</div>
+              <div>
+                <div style={{fontSize:18,fontWeight:700,marginBottom:4,color:T.text}}>Yeni Rapor Oluştur</div>
+                <div style={{fontSize:13,color:T.textSecondary,lineHeight:1.5}}>Portföyünüzün güncel durumunu içeren detaylı PDF rapor oluşturun</div>
               </div>
-              {/* Spot/Perp toggle - only for crypto */}
-              {marketFilter==="crypto"&&<div style={{display:"flex",gap:2,background:T.bgInput,borderRadius:6,padding:2}}>
-                <button onClick={()=>setShowPerp(false)} style={{padding:"5px 12px",borderRadius:5,border:"none",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",background:!showPerp?"#9333EA22":"transparent",color:!showPerp?"#9333EA":T.textMuted}}>Spot</button>
-                <button onClick={()=>setShowPerp(true)} style={{padding:"5px 12px",borderRadius:5,border:"none",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",background:showPerp?"#9945FF22":"transparent",color:showPerp?"#9945FF":T.textMuted}}>Perpetual</button>
-              </div>}
+              <button onClick={generateReport} style={{padding:"12px 28px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 20px rgba(147,51,234,.25)"}}>📄 PDF Rapor Oluştur</button>
             </div>
-            <input style={{padding:"8px 14px",background:T.bgInput,border:`1px solid ${T.borderLight}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",width:180,fontFamily:"'Inter',sans-serif"}} placeholder="Ara..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <div style={{...st.card,padding:24}}>
+              <div style={{fontSize:14,fontWeight:600,color:T.text,marginBottom:16,display:"flex",alignItems:"center",gap:8}}>📈 Rapor Özeti</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div style={{background:T.bgInput,borderRadius:10,padding:14,border:`1px solid ${T.border}`}}>
+                  <div style={{fontSize:11,color:T.textSecondary,marginBottom:4}}>Toplam Rapor</div>
+                  <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{reportHistory.length}</div>
+                </div>
+                <div style={{background:T.bgInput,borderRadius:10,padding:14,border:`1px solid ${T.border}`}}>
+                  <div style={{fontSize:11,color:T.textSecondary,marginBottom:4}}>Son Rapor</div>
+                  <div style={{fontSize:13,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{reportHistory.length>0?new Date(reportHistory[reportHistory.length-1].date).toLocaleDateString("tr-TR",{day:"2-digit",month:"short",year:"numeric"}):"—"}</div>
+                </div>
+                <div style={{background:T.bgInput,borderRadius:10,padding:14,border:`1px solid ${T.border}`}}>
+                  <div style={{fontSize:11,color:T.textSecondary,marginBottom:4}}>Portföy Değeri</div>
+                  <div style={{fontSize:13,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{fmt(allTotVal)}</div>
+                </div>
+                <div style={{background:T.bgInput,borderRadius:10,padding:14,border:`1px solid ${T.border}`}}>
+                  <div style={{fontSize:11,color:T.textSecondary,marginBottom:4}}>Toplam K/Z</div>
+                  <div style={{fontSize:13,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:allTotPnl>=0?T.green:T.red}}>{allTotPnl>=0?"+":""}{fmt(allTotPnl)}</div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>
-            {showPerp
-              ? ["#","Coin","Perp Fiyat","Mark Price","24s","Funding","Hacim","İşlem"].map((h,i)=><th key={h} style={{...st.th,textAlign:i<2?"left":i===7?"center":"right"}}>{h}</th>)
-              : ["#","Coin","Fiyat","24s","7g","Piy. Değeri","7g","İşlem"].map((h,i)=><th key={h} style={{...st.th,textAlign:i<2?"left":i>=6?"center":"right"}}>{h}</th>)
-            }
-          </tr></thead><tbody>
-          {filtered.map((coin,i)=>{const p=prices[coin.id];const c24=p?.usd_24h_change||0;const c7=p?.usd_7d_change||0;
-            if (showPerp && marketFilter==="crypto") {
-              const perpPrice = p?.perp_price;
-              if (!perpPrice) return null; // Skip coins without perp data
-              const fr = p?.funding_rate || 0;
-              const frColor = fr > 0 ? T.green : fr < 0 ? T.red : T.textSecondary;
-              const pc = p?.perp_24h_change || 0;
-              return (
-                <tr key={coin.id}><td style={{...st.td,color:T.textSecondary,width:40}}>{i+1}</td>
-                <td style={st.td}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,fontFamily:"'Inter',monospace",background:CLR[i%CLR.length]+"22",color:CLR[i%CLR.length]}}>{coin.symbol.charAt(0)}</div><div><div style={{fontWeight:600,fontSize:13}}>{coin.name}</div><div style={{fontSize:11,color:"#9945FF",fontFamily:"'JetBrains Mono',monospace"}}>{coin.symbol}.P</div></div></div></td>
-                <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{fmt(perpPrice,perpPrice<1?4:2)}</td>
-                <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:T.textSecondary}}>{fmt(p?.mark_price,p?.mark_price<1?4:2)}</td>
-                <td style={{...st.td,textAlign:"right",color:pc>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace"}}>{fPct(pc)}</td>
-                <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:frColor}}>{(fr*100).toFixed(4)}%</td>
-                <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{fmt(p?.perp_volume)}</td>
-                <td style={{...st.td,textAlign:"center"}}><button onClick={()=>{setNcCoin(coin);setNcAmount("");setNcBuyPrice(perpPrice?(perpPrice<1?perpPrice.toFixed(6):perpPrice.toFixed(2)):"");setEditIdx(null);setShowAdd(true);}} style={{padding:"5px 10px",background:"transparent",border:`1px solid ${T.borderLight}`,color:"#9333EA",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:500,fontFamily:"'Inter',sans-serif"}}>+ Ekle</button></td></tr>);
-            }
-            return(
-            <tr key={coin.id}><td style={{...st.td,color:T.textSecondary,width:40}}>{i+1}</td>
-            <td style={st.td}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,fontFamily:"'Inter',monospace",background:getMarketColor(coin.market||"crypto")+"22",color:getMarketColor(coin.market||"crypto")}}>{coin.symbol.charAt(0)}</div><div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontWeight:600,fontSize:13}}>{coin.name}</span><span style={{fontSize:9,padding:"2px 6px",borderRadius:3,background:getMarketColor(coin.market||"crypto")+"18",color:getMarketColor(coin.market||"crypto"),fontWeight:700,letterSpacing:.5}}>{getMarketLabel(coin.market||"crypto")}</span></div><div style={{fontSize:11,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{coin.symbol}</div></div></div></td>
-            <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{fmt(p?.usd,p?.usd<1?4:2,coin.currency||"$")}</td>
-            <td style={{...st.td,textAlign:"right",color:c24>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace"}}>{fPct(c24)}</td>
-            <td style={{...st.td,textAlign:"right",color:c7>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace"}}>{fPct(c7)}</td>
-            <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace"}}>{coin.market==="crypto"?fmt(p?.usd_market_cap):coin.sector||"—"}</td>
-            <td style={{...st.td,textAlign:"center"}}><Spark data={genChart(p?.usd||100,14)} color={c7>=0?T.green:T.red}/></td>
-            <td style={{...st.td,textAlign:"center"}}><button onClick={()=>{setNcCoin(coin);setNcAmount("");setNcBuyPrice(p?.usd?(p.usd<1?p.usd.toFixed(6):p.usd.toFixed(2)):"");setEditIdx(null);setShowAdd(true);}} style={{padding:"5px 10px",background:"transparent",border:`1px solid ${T.borderLight}`,color:"#9333EA",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:500,fontFamily:"'Inter',sans-serif"}}>+ Ekle</button></td></tr>);})}
-          </tbody></table></div></div></div>}
 
-        {/* ═══ CHART TAB ═══ */}
-        {tab==="chart"&&<div style={{animation:"fadeUp .4s ease-out"}}>
+          {/* Report History */}
           <div style={st.card}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
-              <h3 style={{fontSize:16,fontWeight:700}}>Fiyat Grafiği</h3>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                {[{d:7,l:"7G"},{d:30,l:"1A"},{d:90,l:"3A"},{d:180,l:"6A"},{d:365,l:"1Y"}].map(p=>
-                  <button key={p.d} onClick={()=>setChartPeriod(p.d)} style={{padding:"6px 14px",background:chartPeriod===p.d?"#9333EA18":"transparent",border:`1px solid ${chartPeriod===p.d?"#9333EA44":T.borderLight}`,color:chartPeriod===p.d?"#9333EA":T.textMuted,borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'Inter',sans-serif"}}>{p.l}</button>)}
-              </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <h3 style={{fontSize:15,fontWeight:600,color:T.text}}>Rapor Geçmişi</h3>
+              {reportHistory.length>0&&<button onClick={()=>{localStorage.removeItem("ip_report_history");setReportHistory([]);}} style={{background:T.redGlow,border:`1px solid ${T.red}33`,color:T.red,padding:"6px 14px",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:500,fontFamily:"'Inter',sans-serif"}}>Geçmişi Temizle</button>}
             </div>
-            {/* Coin Selector */}
-            <div style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
-              {[...new Set(Object.values(portfolios).flat().map(p=>p.coinId))].map(coinId=>{
-                const coin=knownCoins.find(c=>c.id===coinId)||{id:coinId,symbol:"?",name:coinId};
-                const mc=getMarketColor(getMarketType(coinId));
-                return(<button key={coinId} onClick={()=>setSelChart(coinId)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${selChart===coinId?mc+"66":T.borderLight}`,background:selChart===coinId?mc+"15":"transparent",color:selChart===coinId?mc:T.textSecondary,fontSize:12,fontWeight:selChart===coinId?600:400,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
-                  <span style={{width:6,height:6,borderRadius:"50%",background:mc}}/>{coin.symbol||coinId}
-                </button>);
-              })}
-              {/* Popüler coinler de ekle */}
-              {DEFAULT_COINS.slice(0,8).filter(c=>!Object.values(portfolios).flat().find(p=>p.coinId===c.id)).map(coin=>
-                <button key={coin.id} onClick={()=>setSelChart(coin.id)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${selChart===coin.id?"#D4A01766":T.borderLight}`,background:selChart===coin.id?"#D4A01715":"transparent",color:selChart===coin.id?"#D4A017":T.textMuted,fontSize:12,fontWeight:selChart===coin.id?600:400,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",opacity:.7}}>{coin.symbol}</button>
-              )}
-            </div>
-            {/* Chart Info Bar */}
-            {prices[selChart]&&<div style={{display:"flex",gap:20,marginBottom:16,flexWrap:"wrap"}}>
-              <div>
-                <div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5}}>Güncel Fiyat</div>
-                <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{fmt(prices[selChart]?.usd,prices[selChart]?.usd<1?4:2)}</div>
-              </div>
-              <div>
-                <div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5}}>24s Değişim</div>
-                <div style={{fontSize:18,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:(prices[selChart]?.usd_24h_change||0)>=0?T.green:T.red}}>{fPct(prices[selChart]?.usd_24h_change||0)}</div>
-              </div>
-              {prices[selChart]?.usd_7d_change!==0&&<div>
-                <div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5}}>7g Değişim</div>
-                <div style={{fontSize:18,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:(prices[selChart]?.usd_7d_change||0)>=0?T.green:T.red}}>{fPct(prices[selChart]?.usd_7d_change||0)}</div>
+            {reportHistory.length===0?
+              <div style={{textAlign:"center",padding:48,color:T.textMuted}}>
+                <div style={{fontSize:48,marginBottom:12,opacity:.5}}>📋</div>
+                <div style={{fontSize:15,fontWeight:500,color:T.textSecondary,marginBottom:6}}>Henüz rapor oluşturulmamış</div>
+                <div style={{fontSize:13,color:T.textMuted}}>Yukarıdaki butonu kullanarak ilk raporunuzu oluşturun</div>
+              </div>:
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {[...reportHistory].reverse().map((r,i)=>{
+                  const d=new Date(r.date);
+                  return(<div key={i} style={{background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:10,padding:16,display:"flex",justifyContent:"space-between",alignItems:"center",transition:"border-color .2s"}}
+                    onMouseEnter={e=>e.currentTarget.style.borderColor=T.accent+"44"} onMouseLeave={e=>e.currentTarget.style.borderColor=T.border}>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:600,color:T.text}}>{d.toLocaleDateString("tr-TR",{day:"2-digit",month:"long",year:"numeric"})}</div>
+                      <div style={{fontSize:12,color:T.textSecondary,marginTop:3}}>{d.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})} • {r.assets||0} varlık{r.user?" • "+r.user:""}</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{fmt(r.totVal||0)}</div>
+                      <div style={{fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:(r.pnl||0)>=0?T.green:T.red,marginTop:2}}>{(r.pnl||0)>=0?"+":""}{fmt(r.pnl||0)} ({r.pnlPct!=null?fPct(r.pnlPct):"—"})</div>
+                    </div>
+                  </div>);
+                })}
               </div>}
-              {prices[selChart]?.usd_market_cap>0&&<div>
-                <div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5}}>Piy. Değeri</div>
-                <div style={{fontSize:18,fontWeight:600,fontFamily:"'JetBrains Mono',monospace"}}>{fmt(prices[selChart]?.usd_market_cap)}</div>
-              </div>}
-              {prices[selChart]?.funding_rate!==undefined&&prices[selChart]?.funding_rate!==0&&<div>
-                <div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5}}>Funding Rate</div>
-                <div style={{fontSize:18,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:prices[selChart]?.funding_rate>=0?T.green:T.red}}>{(prices[selChart]?.funding_rate*100).toFixed(4)}%</div>
-              </div>}
-            </div>}
-            {/* Area Chart */}
-            <div style={{height:360}}>
-              {curChart.length>0?
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={curChart}>
-                    <defs>
-                      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#9333EA" stopOpacity={0.25}/>
-                        <stop offset="100%" stopColor="#9333EA" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="date" tick={{fill:T.textMuted,fontSize:10}} tickLine={false} axisLine={{stroke:T.border}} interval="preserveStartEnd"/>
-                    <YAxis tick={{fill:T.textMuted,fontSize:10}} tickLine={false} axisLine={false} domain={["auto","auto"]} tickFormatter={v=>fmt(v,v<1?4:0)}/>
-                    <Tooltip contentStyle={{...st.tt,padding:"10px 14px"}} formatter={v=>[fmt(v,v<1?6:2),"Fiyat"]} labelStyle={{color:T.textMuted,fontSize:11}}/>
-                    <Area type="monotone" dataKey="price" stroke="#9333EA" strokeWidth={2} fill="url(#chartGrad)" dot={false} activeDot={{r:4,fill:"#9333EA",stroke:T.bg,strokeWidth:2}}/>
-                  </AreaChart>
-                </ResponsiveContainer>
-              :<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",color:T.textMuted}}>
-                <div style={{textAlign:"center"}}><div style={{fontSize:40,marginBottom:8}}>📈</div>Grafik yükleniyor...</div>
-              </div>}
-            </div>
           </div>
         </div>}
-
-        {/* ═══ IPO / HALKA ARZ TAB ═══ */}
-        {tab==="ipo"&&<IpoTab T={T} st={st} />}
 
       </main>
 
@@ -2147,7 +1881,7 @@ export default function CryptoPortfolio() {
                     const isStockLike = coin.isStock || coin.isFMP || isStock(coin.id) || coin.market === "us" || coin.market === "bist";
                     if (isStockLike || !coin.market || coin.market !== "crypto") {
                       try {
-                        const FMP_KEY = process.env.REACT_APP_FMP_KEY || "00rEssEWw276o3NRJY1BcLH1ACQGb1D6";
+                        const FMP_KEY = "00rEssEWw276o3NRJY1BcLH1ACQGb1D6";
                         const sym = coin.id || coin.symbol;
                         const res = await fetch(`https://financialmodelingprep.com/api/v3/quote/${sym}?apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(10000) });
                         if (res.ok) {
@@ -2301,38 +2035,6 @@ export default function CryptoPortfolio() {
           </div>
         </div>
         <iframe src={pdfPreviewUrl} style={{flex:1,border:"none",background:"#fff"}} title="PDF Preview"/>
-      </div>}
-
-      {/* Rapor Geçmişi Modal */}
-      {showReportHistory&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",animation:"fadeUp .3s ease-out"}} onClick={()=>setShowReportHistory(false)}>
-        <div style={{background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,borderRadius:16,width:"90%",maxWidth:600,maxHeight:"80vh",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>📋</span><span style={{fontSize:15,fontWeight:600,color:T.text}}>Rapor Geçmişi</span></div>
-            <button onClick={()=>setShowReportHistory(false)} style={{background:"none",border:"none",color:T.textMuted,fontSize:18,cursor:"pointer"}}>✕</button>
-          </div>
-          <div style={{padding:16,overflowY:"auto",maxHeight:"65vh"}}>
-            {reportHistory.length===0?<div style={{textAlign:"center",padding:40,color:T.textMuted}}><div style={{fontSize:40,marginBottom:8}}>📄</div>Henüz rapor oluşturulmamış</div>:
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {[...reportHistory].reverse().map((r,i)=>{
-                const d=new Date(r.date);
-                return(<div key={i} style={{background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:10,padding:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div>
-                    <div style={{fontSize:13,fontWeight:600,color:T.text}}>{d.toLocaleDateString("tr-TR",{day:"2-digit",month:"long",year:"numeric"})}</div>
-                    <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{d.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})} • {r.assets||0} varlık{r.user?" • "+r.user:""}</div>
-                  </div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:14,fontWeight:700,fontFamily:"'Inter',monospace",color:T.text}}>{fmt(r.totVal||0)}</div>
-                    <div style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:(r.pnl||0)>=0?T.green:T.red,marginTop:2}}>{(r.pnl||0)>=0?"+":""}{fmt(r.pnl||0)} ({r.pnlPct!=null?fPct(r.pnlPct):"—"})</div>
-                  </div>
-                </div>);
-              })}
-            </div>}
-          </div>
-          <div style={{padding:"12px 16px",borderTop:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between"}}>
-            <button onClick={generateReport} style={{background:T.green,border:"none",color:"#0B0D15",padding:"8px 20px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:600}}>📄 Yeni Rapor Oluştur</button>
-            {reportHistory.length>0&&<button onClick={()=>{localStorage.removeItem("ip_report_history");setReportHistory([]);}} style={{background:"none",border:`1px solid ${T.red}33`,color:T.red,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:11}}>Geçmişi Temizle</button>}
-          </div>
-        </div>
       </div>}
 
       <style>{animations + `body{background:${T.bg};transition:background .3s}`}</style>
