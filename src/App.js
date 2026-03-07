@@ -1480,7 +1480,7 @@ export default function CryptoPortfolio() {
   const st={card:{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:14,padding:20,overflow:"hidden",backdropFilter:"blur(10px)"},th:{padding:"10px 12px",fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,fontWeight:600,textAlign:"left",borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"},td:{padding:"11px 12px",fontSize:13,borderBottom:`1px solid ${T.border}`,verticalAlign:"middle"},tt:{background:T.bgInput,border:`1px solid ${T.borderLight}`,borderRadius:8,color:T.text,fontSize:12,fontFamily:"'JetBrains Mono',monospace"}};
 
   if (showSplash) return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  if (!isLoggedIn) return <AuthScreen onLogin={(user) => { setCurrentUser(user); setIsLoggedIn(true); }} />;
+  if (!isLoggedIn) return <AuthScreen onLogin={async (user) => { const name = user.displayName || user.email?.split("@")[0] || (user.isAnonymous ? "Misafir" : "Kullanici"); setCurrentUser(name); setIsLoggedIn(true); if (!user.isAnonymous) { try { const data = await getUserData(user.uid); if (data && data.portfolios) { setPortfolios(data.portfolios); if (data.sections) setSections(data.sections); } else { const lp = localStorage.getItem("ip_portfolios"); if (lp) { const p = JSON.parse(lp); setPortfolios(p); await savePortfolios(user.uid, p, sections); } } } catch(e) { console.error("Firestore:", e); } } }} />;
 
   // Loading artık sayfayı bloklamaz — skeleton gösterilir
   const isLoading = loading && Object.keys(prices).length === 0;
