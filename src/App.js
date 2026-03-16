@@ -625,6 +625,10 @@ const AuthScreen = ({ onLogin }) => {
 export default function CryptoPortfolio() {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const firebaseUserRef = useRef(null);
+  const dataLoadedRef = useRef(false);
   const [currentUser, setCurrentUser] = useState("");
   const [themeMode, setThemeMode] = useState(() => {
     try { return localStorage.getItem("ip_theme") || "dark"; } catch(e) { return "dark"; }
@@ -754,7 +758,9 @@ export default function CryptoPortfolio() {
   const log = useCallback((type,ok,detail)=>setReqLog(p=>[{time:new Date(),type,success:ok,detail},...p.slice(0,49)]),[]);
 
   // Save to localStorage on change
-  useEffect(() => { try { localStorage.setItem("ip_portfolios", JSON.stringify(portfolios)); } catch(e) {} }, [portfolios]);
+  useEffect(() => { try { localStorage.setItem("ip_portfolios", JSON.stringify(portfolios)); } catch(e) {}
+    const fu = firebaseUserRef.current;
+    if (fu && !fu.isAnonymous && dataLoadedRef.current) { savePortfolios(fu.uid, portfolios, sections); } }, [portfolios]);
   useEffect(() => { try { localStorage.setItem("ip_activePortfolio", activePortfolio); } catch(e) {} }, [activePortfolio]);
   useEffect(() => { try { localStorage.setItem("ip_knownCoins", JSON.stringify(knownCoins)); } catch(e) {} }, [knownCoins]);
   useEffect(() => { try { localStorage.setItem("ip_sections", JSON.stringify(sections)); } catch(e) {} }, [sections]);
@@ -1601,7 +1607,7 @@ export default function CryptoPortfolio() {
   const st={card:{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:14,padding:20,overflow:"hidden",backdropFilter:"blur(10px)"},th:{padding:"10px 12px",fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,fontWeight:600,textAlign:"left",borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"},td:{padding:"11px 12px",fontSize:13,borderBottom:`1px solid ${T.border}`,verticalAlign:"middle"},tt:{background:T.bgInput,border:`1px solid ${T.borderLight}`,borderRadius:8,color:T.text,fontSize:12,fontFamily:"'JetBrains Mono',monospace"}};
 
   if (showSplash) return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  if (!isLoggedIn) return <AuthScreen onLogin={async (user) => { const name = user.displayName || user.email?.split("@")[0] || (user.isAnonymous ? "Misafir" : "Kullanici"); setCurrentUser(name); setIsLoggedIn(true); if (!user.isAnonymous) { try { const data = await getUserData(user.uid); if (data && data.portfolios) { setPortfolios(data.portfolios); if (data.sections) setSections(data.sections); } else { const lp = localStorage.getItem("ip_portfolios"); if (lp) { const p = JSON.parse(lp); setPortfolios(p); await savePortfolios(user.uid, p, sections); } } } catch(e) { console.error("Firestore:", e); } } }} />;
+  if (!isLoggedIn) return <AuthScreen onLogin={async (user) => { const name = user.displayName || user.email?.split("@")[0] || (user.isAnonymous ? "Misafir" : "Kullanici"); setCurrentUser(name); setFirebaseUser(user); firebaseUserRef.current = user; if (!user.isAnonymous) { try { const data = await getUserData(user.uid); if (data && data.portfolios) { setPortfolios(data.portfolios); if (data.sections) setSections(data.sections); } else { const lp = localStorage.getItem("ip_portfolios"); if (lp) { const p = JSON.parse(lp); setPortfolios(p); await savePortfolios(user.uid, p, sections); } } } catch(e) { console.error("Firestore:", e); } } setDataLoaded(true); dataLoadedRef.current = true; setIsLoggedIn(true); }} />;
 
   // Loading artık sayfayı bloklamaz — skeleton gösterilir
   const isLoading = loading && Object.keys(prices).length === 0;
