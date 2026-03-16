@@ -653,6 +653,10 @@ export default function CryptoPortfolio() {
   const [transactions, setTransactions] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_transactions") || "{}"); } catch(e) { return {}; } });
   const [showTxModal, setShowTxModal] = useState(false);
   const [txCoinId, setTxCoinId] = useState(null);
+  const [newTxType, setNewTxType] = useState("buy");
+  const [newTxAmount, setNewTxAmount] = useState("");
+  const [newTxPrice, setNewTxPrice] = useState("");
+  const [newTxDate, setNewTxDate] = useState(new Date().toISOString().slice(0,16));
 
   // ── Haber Akışı ──
   const [newsData, setNewsData] = useState([]);
@@ -674,6 +678,17 @@ export default function CryptoPortfolio() {
   useEffect(() => { try { localStorage.setItem("ip_trade_kasa", String(tradeKasa)); } catch(e) {} }, [tradeKasa]);
   useEffect(() => { try { localStorage.setItem("ip_goals", JSON.stringify(goals)); } catch(e) {} }, [goals]);
   useEffect(() => { try { localStorage.setItem("ip_transactions", JSON.stringify(transactions)); } catch(e) {} }, [transactions]);
+
+  // Modal açıldığında tx form state'lerini sıfırla + fiyatı doldur
+  useEffect(() => {
+    if (showTxModal && txCoinId) {
+      setNewTxType("buy");
+      setNewTxAmount("");
+      const cp = prices[txCoinId]?.usd || 0;
+      setNewTxPrice(cp > 0 ? (cp < 1 ? cp.toFixed(6) : cp.toFixed(2)) : "");
+      setNewTxDate(new Date().toISOString().slice(0,16));
+    }
+  }, [showTxModal, txCoinId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Haber Akışı Fetch ──
   const fetchNews = useCallback(async (category = "all") => {
@@ -2653,10 +2668,6 @@ export default function CryptoPortfolio() {
         const totalBought = txList.filter(t=>t.type==="buy").reduce((s,t)=>s+t.amount,0);
         const totalSpent = txList.filter(t=>t.type==="buy").reduce((s,t)=>s+t.total,0);
         const avgCost = totalBought > 0 ? totalSpent / totalBought : 0;
-        const [newTxType, setNewTxType] = React.useState("buy");
-        const [newTxAmount, setNewTxAmount] = React.useState("");
-        const [newTxPrice, setNewTxPrice] = React.useState(currentPrice > 0 ? (currentPrice < 1 ? currentPrice.toFixed(6) : currentPrice.toFixed(2)) : "");
-        const [newTxDate, setNewTxDate] = React.useState(new Date().toISOString().slice(0,16));
         const addTx = () => {
           if (!newTxAmount || !newTxPrice) return;
           const tx = { id: Date.now(), type: newTxType, amount: parseFloat(newTxAmount), price: parseFloat(newTxPrice), date: newTxDate || new Date().toISOString(), total: parseFloat(newTxAmount) * parseFloat(newTxPrice) };
