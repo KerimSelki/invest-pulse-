@@ -757,13 +757,23 @@ export default function CryptoPortfolio() {
 
   const log = useCallback((type,ok,detail)=>setReqLog(p=>[{time:new Date(),type,success:ok,detail},...p.slice(0,49)]),[]);
 
-  // Save to localStorage on change
-  useEffect(() => { try { localStorage.setItem("ip_portfolios", JSON.stringify(portfolios)); } catch(e) {}
+  // Save to localStorage on change + Firebase sync
+  useEffect(() => {
+    try { localStorage.setItem("ip_portfolios", JSON.stringify(portfolios)); } catch(e) {}
     const fu = firebaseUserRef.current;
-    if (fu && !fu.isAnonymous && dataLoadedRef.current) { savePortfolios(fu.uid, portfolios, sections); } }, [portfolios]);
+    if (fu && !fu.isAnonymous && dataLoadedRef.current) {
+      savePortfolios(fu.uid, portfolios, sections);
+    }
+  }, [portfolios]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { try { localStorage.setItem("ip_activePortfolio", activePortfolio); } catch(e) {} }, [activePortfolio]);
   useEffect(() => { try { localStorage.setItem("ip_knownCoins", JSON.stringify(knownCoins)); } catch(e) {} }, [knownCoins]);
-  useEffect(() => { try { localStorage.setItem("ip_sections", JSON.stringify(sections)); } catch(e) {} }, [sections]);
+  useEffect(() => {
+    try { localStorage.setItem("ip_sections", JSON.stringify(sections)); } catch(e) {}
+    const fu = firebaseUserRef.current;
+    if (fu && !fu.isAnonymous && dataLoadedRef.current) {
+      savePortfolios(fu.uid, portfolios, sections);
+    }
+  }, [sections]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const buildUrl = useCallback((path,params="")=>{
     const base=savedKey?"https://pro-api.coingecko.com/api/v3":"https://api.coingecko.com/api/v3";
