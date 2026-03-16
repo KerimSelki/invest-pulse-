@@ -136,6 +136,85 @@ export const animations = `
     50% { transform:translateY(-8px) }
   }
   
+  @keyframes slideInRight {
+    from { opacity:0; transform:translateX(30px) }
+    to   { opacity:1; transform:translateX(0) }
+  }
+  @keyframes slideInLeft {
+    from { opacity:0; transform:translateX(-30px) }
+    to   { opacity:1; transform:translateX(0) }
+  }
+  @keyframes bounceIn {
+    0%   { opacity:0; transform:scale(0.7) }
+    60%  { opacity:1; transform:scale(1.05) }
+    80%  { transform:scale(0.97) }
+    100% { transform:scale(1) }
+  }
+  @keyframes numberRise {
+    from { opacity:0; transform:translateY(12px) }
+    to   { opacity:1; transform:translateY(0) }
+  }
+  @keyframes borderGlow {
+    0%,100% { border-color: rgba(147,51,234,.2) }
+    50%      { border-color: rgba(147,51,234,.6) }
+  }
+  @keyframes cardHover {
+    from { transform:translateY(0); box-shadow:none }
+    to   { transform:translateY(-3px); box-shadow:0 8px 32px rgba(147,51,234,.15) }
+  }
+  @keyframes newsSlide {
+    from { opacity:0; transform:translateY(16px) }
+    to   { opacity:1; transform:translateY(0) }
+  }
+  @keyframes tabSwitch {
+    from { opacity:0; transform:translateY(8px) scale(0.99) }
+    to   { opacity:1; transform:translateY(0) scale(1) }
+  }
+  @keyframes priceFlashUp {
+    0%   { background:rgba(34,197,94,.18) }
+    100% { background:transparent }
+  }
+  @keyframes priceFlashDown {
+    0%   { background:rgba(239,68,68,.18) }
+    100% { background:transparent }
+  }
+  @keyframes targetPing {
+    0%   { transform:scale(1);   opacity:1 }
+    75%  { transform:scale(1.6); opacity:0 }
+    100% { transform:scale(1.6); opacity:0 }
+  }
+
+  /* Tab geçiş animasyonu — tüm ana tab içerikleri */
+  main > div { animation: tabSwitch 0.35s cubic-bezier(0.22,1,0.36,1) both }
+
+  /* Haber kartları staggered animasyon */
+  .news-card:nth-child(1)  { animation-delay:.02s }
+  .news-card:nth-child(2)  { animation-delay:.04s }
+  .news-card:nth-child(3)  { animation-delay:.06s }
+  .news-card:nth-child(4)  { animation-delay:.08s }
+  .news-card:nth-child(5)  { animation-delay:.10s }
+  .news-card:nth-child(6)  { animation-delay:.12s }
+
+  /* Portföy satır hover */
+  tbody tr { transition: background .15s }
+  tbody tr:hover { background: rgba(147,51,234,.04) }
+
+  /* Kart hover glow */
+  .ip-card {
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+  }
+  .ip-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0,0,0,.25);
+  }
+
+  /* Sayı değişiminde flash */
+  .price-up   { animation: priceFlashUp   0.8s ease-out }
+  .price-down { animation: priceFlashDown 0.8s ease-out }
+
+  /* Hedef fiyata yaklaşınca ping */
+  .target-ping { animation: targetPing 1.5s cubic-bezier(0,0,.2,1) infinite }
+
   ::-webkit-scrollbar { width:6px }
   ::-webkit-scrollbar-track { background:transparent }
   ::-webkit-scrollbar-thumb { background:#2A2D45; border-radius:3px }
