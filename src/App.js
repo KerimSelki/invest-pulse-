@@ -652,7 +652,7 @@ export default function CryptoPortfolio() {
   const [tradeKasa, setTradeKasa] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_kasa") || "5000"); } catch(e) { return 5000; } });
   const [goals, setGoals] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_goals") || "[]"); } catch(e) { return []; } });
   const [editTrade, setEditTrade] = useState(null);
-  const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
+  const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
 
   // Trade localStorage sync
   useEffect(() => { try { localStorage.setItem("ip_trades", JSON.stringify(trades)); } catch(e) {} }, [trades]);
@@ -681,7 +681,7 @@ export default function CryptoPortfolio() {
   const shortCount = trades.filter(t=>t.direction==="Short").length;
   const monthlyPnlData = (()=>{ const mp={}; closedTrades.forEach(t=>{ const m=new Date(t.exitDate||t.entryDate).toLocaleDateString("tr-TR",{month:"short",year:"2-digit"}); mp[m]=(mp[m]||0)+calcPnl(t); }); return Object.entries(mp).map(([month,pnl])=>({month,pnl:+pnl.toFixed(2)})); })();
 
-  const resetNewTrade = () => setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
+  const resetNewTrade = () => setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
 
   const saveTrade = () => {
     const t = editTrade !== null ? {...newTrade, id: trades[editTrade].id} : {...newTrade, id: Date.now()};
@@ -2119,47 +2119,118 @@ export default function CryptoPortfolio() {
 
           {/* ═══ ADD/EDIT TRADE ═══ */}
           {tradeView==="add"&&<div>
-            <div style={{display:"grid",gap:16}}>
-              {/* Risk Yönetimi */}
-              <div style={{...st.card,borderLeft:`3px solid ${T.gold}`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>🛡 Risk Yönetimi</div>
-                <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Toplam Kasa (USDT)</div><input value={tradeKasa} onChange={e=>setTradeKasa(parseFloat(e.target.value)||0)} style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.gold,fontSize:14,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",outline:"none",width:150}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Risk % (Kasanın)</div><div style={{display:"flex",gap:4}}>{["0.5","1","1.5","2","3","5"].map(r=><button key={r} onClick={()=>setNewTrade(p=>({...p,amount:String((tradeKasa*parseFloat(r)/100).toFixed(2))}))} style={{padding:"6px 10px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:6,color:T.text,fontSize:11,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace"}}>%{r}</button>)}</div></div>
-                </div>
-              </div>
+            <div style={{display:"grid",gap:14}}>
 
               {/* Trade Bilgileri */}
               <div style={{...st.card,borderLeft:`3px solid ${T.accent}`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>📈 Trade Bilgileri</div>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:14,display:"flex",alignItems:"center",gap:8}}>📈 Trade Bilgileri</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Sembol</div><input value={newTrade.symbol} onChange={e=>setNewTrade(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="BTC/USDT" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'Inter',sans-serif"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Piyasa Türü</div><select value={newTrade.market} onChange={e=>setNewTrade(p=>({...p,market:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Kripto</option><option>Forex</option><option>Hisse</option><option>Emtia</option></select></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Borsa</div><select value={newTrade.exchange} onChange={e=>setNewTrade(p=>({...p,exchange:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Bybit</option><option>OKX</option><option>Dreamcash</option></select></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Yön</div><div style={{display:"flex",gap:6}}>{["Long","Short"].map(d=><button key={d} onClick={()=>setNewTrade(p=>({...p,direction:d}))} style={{flex:1,padding:"10px",background:newTrade.direction===d?(d==="Long"?"#22C55E18":"#EF444418"):T.bgInput,border:`1px solid ${newTrade.direction===d?(d==="Long"?"#22C55E44":"#EF444444"):T.border}`,borderRadius:8,color:newTrade.direction===d?(d==="Long"?"#22C55E":"#EF4444"):T.textMuted,fontSize:13,fontWeight:600,cursor:"pointer"}}>{d}</button>)}</div></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Durum</div><select value={newTrade.status} onChange={e=>setNewTrade(p=>({...p,status:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="Acik">Açık</option><option value="Kapali">Kapalı</option></select></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Kaldıraç</div><select value={newTrade.leverage} onChange={e=>setNewTrade(p=>({...p,leverage:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}>{["1x","2x","3x","5x","10x","20x","25x","50x","75x","100x","125x"].map(l=><option key={l}>{l}</option>)}</select></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Sembol</div><input value={newTrade.symbol} onChange={e=>setNewTrade(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="BTC/USDT" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'Inter',sans-serif"}} /></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Piyasa Türü</div><select value={newTrade.market} onChange={e=>setNewTrade(p=>({...p,market:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Kripto</option><option>Forex</option><option>Hisse</option><option>Emtia</option></select></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Borsa</div><select value={newTrade.exchange} onChange={e=>setNewTrade(p=>({...p,exchange:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Bybit</option><option>OKX</option><option>Dreamcash</option></select></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Yön</div><div style={{display:"flex",gap:6}}>{["Long","Short"].map(d=><button key={d} onClick={()=>setNewTrade(p=>({...p,direction:d}))} style={{flex:1,padding:"10px",background:newTrade.direction===d?(d==="Long"?"#22C55E18":"#EF444418"):T.bgInput,border:`1px solid ${newTrade.direction===d?(d==="Long"?"#22C55E44":"#EF444444"):T.border}`,borderRadius:8,color:newTrade.direction===d?(d==="Long"?"#22C55E":"#EF4444"):T.textMuted,fontSize:13,fontWeight:600,cursor:"pointer"}}>{d}</button>)}</div></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Durum</div><select value={newTrade.status} onChange={e=>setNewTrade(p=>({...p,status:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="Acik">Açık</option><option value="Kapali">Kapalı</option></select></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Kaldıraç</div><select value={newTrade.leverage} onChange={e=>setNewTrade(p=>({...p,leverage:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}>{["1x","2x","3x","5x","10x","20x","25x","50x","75x","100x","125x"].map(l=><option key={l}>{l}</option>)}</select></div>
                 </div>
               </div>
 
-              {/* Fiyat & Pozisyon */}
+              {/* Entry 1 / 2 / 3 — Fiyat & Miktar yanyana */}
               <div style={{...st.card,borderLeft:`3px solid #3b82f6`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>💲 Fiyat & Pozisyon</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Giriş Fiyatı</div><input type="number" value={newTrade.entryPrice} onChange={e=>setNewTrade(p=>({...p,entryPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Çıkış Fiyatı</div><input type="number" value={newTrade.exitPrice} onChange={e=>setNewTrade(p=>({...p,exitPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Kontrat Miktarı (USDT)</div><input type="number" value={newTrade.amount} onChange={e=>setNewTrade(p=>({...p,amount:e.target.value}))} placeholder="100" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span>💲 Entry Seviyeleri</span>
+                  {newTrade.entryPrice&&<span style={{fontSize:12,color:"#9333EA",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>Ort. Giriş: ${parseFloat(newTrade.entryPrice)<1?parseFloat(newTrade.entryPrice).toFixed(6):parseFloat(newTrade.entryPrice).toFixed(4)}</span>}
+                </div>
+                {/* Başlık satırı */}
+                <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr",gap:8,marginBottom:8}}>
+                  <div/>
+                  <div style={{fontSize:10,color:T.textMuted,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,paddingLeft:2}}>Fiyat ($)</div>
+                  <div style={{fontSize:10,color:T.textMuted,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,paddingLeft:2}}>Miktar ($)</div>
+                </div>
+                {/* Entry 1 */}
+                <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr",gap:8,marginBottom:8,alignItems:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#3b82f6",display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:"#3b82f6",display:"inline-block"}}/>Entry 1</div>
+                  <input type="number" value={newTrade.entry1Price||""} onChange={e=>{const v=e.target.value;setNewTrade(p=>{const n={...p,entry1Price:v};const es=[[parseFloat(n.entry1Price||0),parseFloat(n.entry1Amount||0)],[parseFloat(n.entry2Price||0),parseFloat(n.entry2Amount||0)],[parseFloat(n.entry3Price||0),parseFloat(n.entry3Amount||0)]].filter(([p,a])=>p>0&&a>0);if(es.length>0){const ta=es.reduce((s,[,a])=>s+a,0);const tq=es.reduce((s,[p,a])=>s+a/p,0);n.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);n.amount=String(ta);}return n;});}} placeholder="0.00" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid #3b82f633`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                  <input type="number" value={newTrade.entry1Amount||""} onChange={e=>{const v=e.target.value;setNewTrade(p=>{const n={...p,entry1Amount:v};const es=[[parseFloat(n.entry1Price||0),parseFloat(n.entry1Amount||0)],[parseFloat(n.entry2Price||0),parseFloat(n.entry2Amount||0)],[parseFloat(n.entry3Price||0),parseFloat(n.entry3Amount||0)]].filter(([p,a])=>p>0&&a>0);if(es.length>0){const ta=es.reduce((s,[,a])=>s+a,0);const tq=es.reduce((s,[p,a])=>s+a/p,0);n.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);n.amount=String(ta);}return n;});}} placeholder="100" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                </div>
+                {/* Entry 2 */}
+                <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr",gap:8,marginBottom:8,alignItems:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#9333EA",display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:"#9333EA",display:"inline-block"}}/>Entry 2</div>
+                  <input type="number" value={newTrade.entry2Price||""} onChange={e=>{const v=e.target.value;setNewTrade(p=>{const n={...p,entry2Price:v};const es=[[parseFloat(n.entry1Price||0),parseFloat(n.entry1Amount||0)],[parseFloat(n.entry2Price||0),parseFloat(n.entry2Amount||0)],[parseFloat(n.entry3Price||0),parseFloat(n.entry3Amount||0)]].filter(([p,a])=>p>0&&a>0);if(es.length>0){const ta=es.reduce((s,[,a])=>s+a,0);const tq=es.reduce((s,[p,a])=>s+a/p,0);n.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);n.amount=String(ta);}return n;});}} placeholder="Opsiyonel" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid #9333EA33`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                  <input type="number" value={newTrade.entry2Amount||""} onChange={e=>{const v=e.target.value;setNewTrade(p=>{const n={...p,entry2Amount:v};const es=[[parseFloat(n.entry1Price||0),parseFloat(n.entry1Amount||0)],[parseFloat(n.entry2Price||0),parseFloat(n.entry2Amount||0)],[parseFloat(n.entry3Price||0),parseFloat(n.entry3Amount||0)]].filter(([p,a])=>p>0&&a>0);if(es.length>0){const ta=es.reduce((s,[,a])=>s+a,0);const tq=es.reduce((s,[p,a])=>s+a/p,0);n.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);n.amount=String(ta);}return n;});}} placeholder="Opsiyonel" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                </div>
+                {/* Entry 3 */}
+                <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr",gap:8,alignItems:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#F59E0B",display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:"#F59E0B",display:"inline-block"}}/>Entry 3</div>
+                  <input type="number" value={newTrade.entry3Price||""} onChange={e=>{const v=e.target.value;setNewTrade(p=>{const n={...p,entry3Price:v};const es=[[parseFloat(n.entry1Price||0),parseFloat(n.entry1Amount||0)],[parseFloat(n.entry2Price||0),parseFloat(n.entry2Amount||0)],[parseFloat(n.entry3Price||0),parseFloat(n.entry3Amount||0)]].filter(([p,a])=>p>0&&a>0);if(es.length>0){const ta=es.reduce((s,[,a])=>s+a,0);const tq=es.reduce((s,[p,a])=>s+a/p,0);n.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);n.amount=String(ta);}return n;});}} placeholder="Opsiyonel" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid #F59E0B33`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                  <input type="number" value={newTrade.entry3Amount||""} onChange={e=>{const v=e.target.value;setNewTrade(p=>{const n={...p,entry3Amount:v};const es=[[parseFloat(n.entry1Price||0),parseFloat(n.entry1Amount||0)],[parseFloat(n.entry2Price||0),parseFloat(n.entry2Amount||0)],[parseFloat(n.entry3Price||0),parseFloat(n.entry3Amount||0)]].filter(([p,a])=>p>0&&a>0);if(es.length>0){const ta=es.reduce((s,[,a])=>s+a,0);const tq=es.reduce((s,[p,a])=>s+a/p,0);n.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);n.amount=String(ta);}return n;});}} placeholder="Opsiyonel" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                </div>
+                {/* Özet */}
+                {newTrade.entryPrice&&parseFloat(newTrade.entryPrice)>0&&(
+                  <div style={{marginTop:12,padding:"10px 14px",background:`linear-gradient(135deg,#9333EA11,#3b82f611)`,borderRadius:8,border:"1px solid #9333EA22",display:"flex",gap:20,flexWrap:"wrap"}}>
+                    <span style={{fontSize:11,color:T.textMuted}}>Toplam: <span style={{fontWeight:700,color:T.text,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.amount||0).toFixed(2)}</span></span>
+                    <span style={{fontSize:11,color:T.textMuted}}>Ort. Giriş: <span style={{fontWeight:800,color:"#9333EA",fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.entryPrice)<1?parseFloat(newTrade.entryPrice).toFixed(6):parseFloat(newTrade.entryPrice).toFixed(4)}</span></span>
+                  </div>
+                )}
+              </div>
+
+              {/* Çıkış Fiyatı + K/Z */}
+              <div style={{...st.card,borderLeft:`3px solid #8B5CF6`}}>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:14,display:"flex",alignItems:"center",gap:8}}>🚪 Çıkış</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Çıkış Fiyatı</div>
+                    <input type="number" value={newTrade.exitPrice} onChange={e=>setNewTrade(p=>({...p,exitPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                  </div>
+                  {newTrade.exitPrice&&newTrade.entryPrice&&parseFloat(newTrade.entryPrice)>0&&
+                    <div style={{padding:"10px 14px",background:(newTrade.direction==="Long"?parseFloat(newTrade.exitPrice)>=parseFloat(newTrade.entryPrice):parseFloat(newTrade.exitPrice)<=parseFloat(newTrade.entryPrice))?"rgba(34,197,94,.08)":"rgba(239,68,68,.08)",border:`1px solid ${(newTrade.direction==="Long"?parseFloat(newTrade.exitPrice)>=parseFloat(newTrade.entryPrice):parseFloat(newTrade.exitPrice)<=parseFloat(newTrade.entryPrice))?"#22C55E":"#EF4444"}33`,borderRadius:8,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                      <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Tahmini K/Z</div>
+                      <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:(newTrade.direction==="Long"?parseFloat(newTrade.exitPrice)>=parseFloat(newTrade.entryPrice):parseFloat(newTrade.exitPrice)<=parseFloat(newTrade.entryPrice))?"#22C55E":"#EF4444"}}>
+                        {(newTrade.direction==="Long"?(parseFloat(newTrade.exitPrice)-parseFloat(newTrade.entryPrice))/parseFloat(newTrade.entryPrice)*parseFloat(newTrade.amount||0)*(parseFloat(newTrade.leverage)||1):(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.exitPrice))/parseFloat(newTrade.entryPrice)*parseFloat(newTrade.amount||0)*(parseFloat(newTrade.leverage)||1))>=0?"+":""}
+                        {Math.abs((newTrade.direction==="Long"?(parseFloat(newTrade.exitPrice)-parseFloat(newTrade.entryPrice))/parseFloat(newTrade.entryPrice)*parseFloat(newTrade.amount||0)*(parseFloat(newTrade.leverage)||1):(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.exitPrice))/parseFloat(newTrade.entryPrice)*parseFloat(newTrade.amount||0)*(parseFloat(newTrade.leverage)||1))).toFixed(2)}$
+                      </div>
+                      <div style={{fontSize:11,color:(newTrade.direction==="Long"?parseFloat(newTrade.exitPrice)>=parseFloat(newTrade.entryPrice):parseFloat(newTrade.exitPrice)<=parseFloat(newTrade.entryPrice))?"#22C55E99":"#EF444499"}}>
+                        {(newTrade.direction==="Long"?(parseFloat(newTrade.exitPrice)-parseFloat(newTrade.entryPrice))/parseFloat(newTrade.entryPrice)*100*(parseFloat(newTrade.leverage)||1):(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.exitPrice))/parseFloat(newTrade.entryPrice)*100*(parseFloat(newTrade.leverage)||1))>=0?"+":""}
+                        {Math.abs((newTrade.direction==="Long"?(parseFloat(newTrade.exitPrice)-parseFloat(newTrade.entryPrice))/parseFloat(newTrade.entryPrice)*100*(parseFloat(newTrade.leverage)||1):(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.exitPrice))/parseFloat(newTrade.entryPrice)*100*(parseFloat(newTrade.leverage)||1))).toFixed(2)}%
+                      </div>
+                    </div>
+                  }
                 </div>
               </div>
 
-              {/* SL & TP */}
+              {/* SL & TP 1/2/3 — Fiyat & Miktar yanyana */}
               <div style={{...st.card,borderLeft:`3px solid #10b981`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>🎯 Stop Loss & Take Profit</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Stop Loss</div><input type="number" value={newTrade.stopLoss} onChange={e=>setNewTrade(p=>({...p,stopLoss:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.red}33`,borderRadius:8,color:T.red,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Take Profit 1</div><input type="number" value={newTrade.tp1} onChange={e=>setNewTrade(p=>({...p,tp1:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.green}33`,borderRadius:8,color:T.green,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Take Profit 2</div><input type="number" value={newTrade.tp2} onChange={e=>setNewTrade(p=>({...p,tp2:e.target.value}))} placeholder="Opsiyonel" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Take Profit 3</div><input type="number" value={newTrade.tp3} onChange={e=>setNewTrade(p=>({...p,tp3:e.target.value}))} placeholder="Opsiyonel" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:14,display:"flex",alignItems:"center",gap:8}}>🎯 Stop Loss & Take Profit</div>
+                {/* Başlık */}
+                <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr",gap:8,marginBottom:8}}>
+                  <div/>
+                  <div style={{fontSize:10,color:T.textMuted,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,paddingLeft:2}}>Fiyat ($)</div>
+                  <div style={{fontSize:10,color:T.textMuted,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,paddingLeft:2}}>Miktar ($)</div>
+                </div>
+                {/* Stop Loss */}
+                <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr",gap:8,marginBottom:8,alignItems:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:T.red,display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:T.red,display:"inline-block"}}/>SL</div>
+                  <input type="number" value={newTrade.stopLoss} onChange={e=>setNewTrade(p=>({...p,stopLoss:e.target.value}))} placeholder="0.00" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.red}44`,borderRadius:8,color:T.red,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                  <div style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.textMuted,fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}>
+                    {newTrade.stopLoss&&newTrade.entryPrice&&parseFloat(newTrade.entryPrice)>0?((parseFloat(newTrade.stopLoss)-parseFloat(newTrade.entryPrice))/parseFloat(newTrade.entryPrice)*100).toFixed(2)+"%":"—"}
+                  </div>
+                </div>
+                {/* TP 1 */}
+                <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr",gap:8,marginBottom:8,alignItems:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#22C55E",display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:"#22C55E",display:"inline-block"}}/>TP 1</div>
+                  <input type="number" value={newTrade.tp1} onChange={e=>setNewTrade(p=>({...p,tp1:e.target.value}))} placeholder="0.00" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid #22C55E44`,borderRadius:8,color:"#22C55E",fontSize:13,fontWeight:600,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                  <input type="number" value={newTrade.tp1Amount||""} onChange={e=>setNewTrade(p=>({...p,tp1Amount:e.target.value}))} placeholder="Miktar" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                </div>
+                {/* TP 2 */}
+                <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr",gap:8,marginBottom:8,alignItems:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#10B981",display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:"#10B981",display:"inline-block"}}/>TP 2</div>
+                  <input type="number" value={newTrade.tp2} onChange={e=>setNewTrade(p=>({...p,tp2:e.target.value}))} placeholder="Opsiyonel" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid #10B98133`,borderRadius:8,color:"#10B981",fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                  <input type="number" value={newTrade.tp2Amount||""} onChange={e=>setNewTrade(p=>({...p,tp2Amount:e.target.value}))} placeholder="Miktar" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                </div>
+                {/* TP 3 */}
+                <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr",gap:8,alignItems:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#06B6D4",display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:"#06B6D4",display:"inline-block"}}/>TP 3</div>
+                  <input type="number" value={newTrade.tp3} onChange={e=>setNewTrade(p=>({...p,tp3:e.target.value}))} placeholder="Opsiyonel" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid #06B6D433`,borderRadius:8,color:"#06B6D4",fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
+                  <input type="number" value={newTrade.tp3Amount||""} onChange={e=>setNewTrade(p=>({...p,tp3Amount:e.target.value}))} placeholder="Miktar" style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%"}}/>
                 </div>
               </div>
 
