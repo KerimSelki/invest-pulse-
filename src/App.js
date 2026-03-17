@@ -658,7 +658,7 @@ export default function CryptoPortfolio() {
   const [calendarMonth, setCalendarMonth] = useState(() => { const d=new Date(); return {y:d.getFullYear(),m:d.getMonth()}; });
   const [goals, setGoals] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_goals") || "[]"); } catch(e) { return []; } });
   const [editTrade, setEditTrade] = useState(null);
-  const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",rAmount:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
+  const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",rAmount:"",screenshot:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
 
   // Trade localStorage sync
   useEffect(() => { try { localStorage.setItem("ip_trades", JSON.stringify(trades)); } catch(e) {} }, [trades]);
@@ -689,7 +689,7 @@ export default function CryptoPortfolio() {
   const shortCount = trades.filter(t=>t.direction==="Short").length;
   const monthlyPnlData = (()=>{ const mp={}; closedTrades.forEach(t=>{ const m=new Date(t.exitDate||t.entryDate).toLocaleDateString("tr-TR",{month:"short",year:"2-digit"}); mp[m]=(mp[m]||0)+calcPnl(t); }); return Object.entries(mp).map(([month,pnl])=>({month,pnl:+pnl.toFixed(2)})); })();
 
-  const resetNewTrade = () => setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",rAmount:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
+  const resetNewTrade = () => setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",rAmount:"",screenshot:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
 
   const saveTrade = () => {
     const t = editTrade !== null ? {...newTrade, id: trades[editTrade].id} : {...newTrade, id: Date.now()};
@@ -2087,7 +2087,7 @@ export default function CryptoPortfolio() {
               <div style={{fontSize:13,color:T.textMuted}}>{trades.length} trade • Toplam K/Z <span style={{color:totalPnl>=0?T.green:T.red,fontWeight:600}}>${totalPnl.toFixed(2)}</span></div>
             </div>
             <div style={{display:"flex",gap:8}}>
-              {[{v:"list",l:"Geçmiş",ic:"☰"},{v:"add",l:"Yeni Trade",ic:"+"},{v:"calendar",l:"Takvim",ic:"📅"},{v:"analytics",l:"Analitik",ic:"📊"},{v:"notes",l:"Notlar",ic:"📝"}].map(v=>
+              {[{v:"list",l:"Geçmiş",ic:"☰"},{v:"add",l:"Yeni Trade",ic:"+"},{v:"analytics",l:"Analitik & Takvim",ic:"📊"},{v:"notes",l:"Notlar",ic:"📝"}].map(v=>
                 <button key={v.v} onClick={()=>{setTradeView(v.v);if(v.v==="add"){resetNewTrade();setEditTrade(null);}}} style={{padding:"8px 16px",background:tradeView===v.v?"linear-gradient(135deg,#9333EA,#D4A017)":T.bgCard,border:`1px solid ${tradeView===v.v?T.accent+"44":T.border}`,color:tradeView===v.v?"#fff":T.textSecondary,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:4}}>{v.ic} {v.l}</button>
               )}
             </div>
@@ -2662,37 +2662,38 @@ export default function CryptoPortfolio() {
                 </div>
               </div>
 
-              {/* Şablonlar */}
-              {tradeTemplates.length>0&&(
-                <div style={{...st.card,padding:14}}>
-                  <div style={{fontSize:11,fontWeight:700,color:T.textMuted,marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>📋 Şablonlardan Yükle</div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {tradeTemplates.map((tmpl,i)=>(
-                      <button key={i} onClick={()=>setNewTrade(p=>({...p,...tmpl,entryPrice:"",exitPrice:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",status:"Acik",rAmount:""}))}
-                        style={{padding:"6px 14px",background:T.accentGlow,border:`1px solid ${T.accent}44`,borderRadius:7,color:T.accent,fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
-                        📋 {tmpl._name||tmpl.symbol||"Şablon "+(i+1)}
-                        <span onClick={e=>{e.stopPropagation();setTradeTemplates(prev=>prev.filter((_,j)=>j!==i));}}
-                          style={{marginLeft:2,color:T.textMuted,fontSize:10,background:T.bgInput,borderRadius:3,padding:"1px 4px",cursor:"pointer"}}>✕</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* 📸 Trade Görseli */}
+              <div style={{...st.card,borderLeft:`3px solid #8B5CF6`}}>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>📸 Trade Görseli</div>
+                {newTrade.screenshot
+                  ? <div style={{position:"relative"}}>
+                      <img src={newTrade.screenshot} alt="trade" style={{width:"100%",maxHeight:320,objectFit:"contain",borderRadius:10,border:`1px solid ${T.border}`}}/>
+                      <button onClick={()=>setNewTrade(p=>({...p,screenshot:""}))}
+                        style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:6,background:"rgba(239,68,68,.85)",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                    </div>
+                  : <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,padding:"28px 20px",borderRadius:10,border:`2px dashed ${T.border}`,cursor:"pointer",transition:"border-color .2s,background .2s"}}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor=T.accent+"88";e.currentTarget.style.background=T.accentGlow;}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.background="transparent";}}>
+                      <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+                        const file=e.target.files[0];
+                        if(!file) return;
+                        const reader=new FileReader();
+                        reader.onload=ev=>setNewTrade(p=>({...p,screenshot:ev.target.result}));
+                        reader.readAsDataURL(file);
+                      }}/>
+                      <div style={{width:48,height:48,borderRadius:12,background:T.accentGlow,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>📸</div>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontSize:13,fontWeight:600,color:T.textSecondary,marginBottom:3}}>Grafik görselini buraya yükle</div>
+                        <div style={{fontSize:11,color:T.textMuted}}>PNG, JPG — max 5MB</div>
+                      </div>
+                    </label>
+                }
+              </div>
 
               {/* Kaydet */}
-              <div style={{display:"flex",gap:12,justifyContent:"space-between",alignItems:"center"}}>
-                <button onClick={()=>{
-                  const name=prompt("Şablon adı (boş bırakabilirsin):");
-                  if(name===null) return;
-                  const tmpl={...newTrade,_name:name||newTrade.symbol||"Şablon"};
-                  setTradeTemplates(prev=>[...prev.filter(t=>t._name!==tmpl._name),tmpl]);
-                }} style={{padding:"10px 16px",background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:8,color:T.textMuted,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:6}}>
-                  💾 Şablon Kaydet
-                </button>
-                <div style={{display:"flex",gap:10}}>
-                  <button onClick={()=>{resetNewTrade();setEditTrade(null);setTradeView("list");}} style={{padding:"12px 24px",background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:10,color:T.textMuted,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>İptal</button>
-                  <button onClick={saveTrade} style={{padding:"12px 32px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 20px rgba(147,51,234,.25)"}}>{editTrade!==null?"Güncelle":"Trade Kaydet"}</button>
-                </div>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                <button onClick={()=>{resetNewTrade();setEditTrade(null);setTradeView("list");}} style={{padding:"12px 24px",background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:10,color:T.textMuted,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>İptal</button>
+                <button onClick={saveTrade} style={{padding:"12px 32px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 20px rgba(147,51,234,.25)"}}>{editTrade!==null?"Güncelle":"Trade Kaydet"}</button>
               </div>
             </div>
           </div>}
@@ -2802,77 +2803,69 @@ export default function CryptoPortfolio() {
                 </div>
               </div>
             )}
-          </div>}
 
-          {/* ═══ GOALS ═══ */}
-          {tradeView==="calendar"&&<div style={{animation:"fadeUp .4s ease-out"}}>
-            <div style={{marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{fontSize:20,fontWeight:700,color:T.text}}>📅 Trade Takvimi</div>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <button onClick={()=>setCalendarMonth(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1})}
-                  style={{width:32,height:32,borderRadius:8,border:`1px solid ${T.border}`,background:T.bgCard,color:T.text,cursor:"pointer",fontSize:14}}>‹</button>
-                <span style={{fontSize:14,fontWeight:700,color:T.text,minWidth:120,textAlign:"center"}}>
-                  {["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"][calendarMonth.m]} {calendarMonth.y}
-                </span>
-                <button onClick={()=>setCalendarMonth(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1})}
-                  style={{width:32,height:32,borderRadius:8,border:`1px solid ${T.border}`,background:T.bgCard,color:T.text,cursor:"pointer",fontSize:14}}>›</button>
+            {/* 📅 Takvim */}
+            <div style={{marginTop:20,borderTop:`1px solid ${T.border}`,paddingTop:20}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <div style={{fontSize:15,fontWeight:700,color:T.text}}>📅 Trade Takvimi</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <button onClick={()=>setCalendarMonth(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1})}
+                    style={{width:28,height:28,borderRadius:6,border:`1px solid ${T.border}`,background:T.bgCard,color:T.text,cursor:"pointer",fontSize:13}}>‹</button>
+                  <span style={{fontSize:13,fontWeight:700,color:T.text,minWidth:130,textAlign:"center"}}>
+                    {["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"][calendarMonth.m]} {calendarMonth.y}
+                  </span>
+                  <button onClick={()=>setCalendarMonth(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1})}
+                    style={{width:28,height:28,borderRadius:6,border:`1px solid ${T.border}`,background:T.bgCard,color:T.text,cursor:"pointer",fontSize:13}}>›</button>
+                </div>
               </div>
-            </div>
-
-            {/* Gün başlıkları */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4}}>
-              {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map(d=>(
-                <div key={d} style={{fontSize:10,fontWeight:700,color:T.textMuted,textAlign:"center",padding:"6px 0",textTransform:"uppercase",letterSpacing:.5}}>{d}</div>
-              ))}
-            </div>
-
-            {/* Takvim grid */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
-              {calCells.map((day,ci)=>{
-                const dateStr=day?`${calY}-${String(calM+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`:"";
-                const dayTrades=day?trades.filter(t=>(t.entryDate||"").startsWith(dateStr)):[];
-                const dayPnl=dayTrades.filter(t=>t.status==="Kapali").reduce((s,t)=>s+calcPnl(t),0);
-                const openCnt=dayTrades.filter(t=>t.status==="Acik").length;
-                const closedCnt=dayTrades.filter(t=>t.status==="Kapali").length;
-                const isToday=day&&new Date().toISOString().startsWith(dateStr);
-                const hasWin=dayPnl>0;
-                const hasTrades=dayTrades.length>0;
-                return !day
-                  ? <div key={ci} style={{height:90}}/>
-                  : <div key={ci} style={{
-                      height:90,padding:"6px 8px",borderRadius:10,
-                      border:`1px solid ${isToday?T.accent:hasTrades?(hasWin?T.green:dayPnl<0?T.red:T.border):T.border}`,
-                      background:hasTrades?(hasWin?"rgba(34,197,94,.06)":dayPnl<0?"rgba(239,68,68,.06)":T.bgCard):T.bgCard,
-                      transition:"all .15s",cursor:hasTrades?"pointer":"default",
-                      boxShadow:isToday?`0 0 0 2px ${T.accent}44`:"none"}}>
-                    <div style={{fontSize:11,fontWeight:isToday?800:600,color:isToday?T.accent:T.textSecondary,marginBottom:4}}>{day}</div>
-                    {hasTrades&&<div style={{display:"flex",flexDirection:"column",gap:2}}>
-                      {closedCnt>0&&<div style={{fontSize:10,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:hasWin?T.green:T.red}}>{dayPnl>=0?"+":""}{dayPnl.toFixed(0)}$</div>}
-                      <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
-                        {closedCnt>0&&<span style={{fontSize:9,padding:"1px 4px",borderRadius:3,background:hasWin?"rgba(34,197,94,.12)":"rgba(239,68,68,.12)",color:hasWin?T.green:T.red,fontWeight:700}}>{closedCnt} kap.</span>}
-                        {openCnt>0&&<span style={{fontSize:9,padding:"1px 4px",borderRadius:3,background:"rgba(234,179,8,.12)",color:T.gold,fontWeight:700}}>{openCnt} açık</span>}
-                      </div>
-                    </div>}
-                  </div>;
-              })}
-            </div>
-
-            {/* Ay özeti */}
-            {calMonthTrades.length>0&&(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginTop:14}}>
-                {[
-                  {l:"Ay K/Z",v:(calMonthPnl>=0?"+":"")+calMonthPnl.toFixed(0)+"$",c:calMonthPnl>=0?T.green:T.red},
-                  {l:"Trade Sayısı",v:String(calMonthTrades.length),c:T.text},
-                  {l:"Kazanma Oranı",v:calMonthClosed>0?(calMonthWins/calMonthClosed*100).toFixed(0)+"%":"—",c:T.accent},
-                  {l:"Trade Günleri",v:String(calTradeDays),c:T.gold},
-                ].map((k,i)=>(
-                  <div key={i} style={{...st.card,padding:14,textAlign:"center"}}>
-                    <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>{k.l}</div>
-                    <div style={{fontSize:18,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:k.c}}>{k.v}</div>
-                  </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:4}}>
+                {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map(d=>(
+                  <div key={d} style={{fontSize:10,fontWeight:700,color:T.textMuted,textAlign:"center",padding:"5px 0",textTransform:"uppercase",letterSpacing:.5}}>{d}</div>
                 ))}
               </div>
-            )}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+                {calCells.map((day,ci)=>{
+                  const dateStr=day?`${calY}-${String(calM+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`:"";
+                  const dayTrades=day?trades.filter(t=>(t.entryDate||"").startsWith(dateStr)):[];
+                  const dayPnl=dayTrades.filter(t=>t.status==="Kapali").reduce((s,t)=>s+calcPnl(t),0);
+                  const openCnt=dayTrades.filter(t=>t.status==="Acik").length;
+                  const closedCnt=dayTrades.filter(t=>t.status==="Kapali").length;
+                  const isToday=day&&new Date().toISOString().startsWith(dateStr);
+                  const hasWin=dayPnl>0;
+                  const hasTrades=dayTrades.length>0;
+                  return !day
+                    ? <div key={ci} style={{height:80}}/>
+                    : <div key={ci} style={{height:80,padding:"5px 7px",borderRadius:8,
+                        border:`1px solid ${isToday?T.accent:hasTrades?(hasWin?T.green:dayPnl<0?T.red:T.border):T.border}`,
+                        background:hasTrades?(hasWin?"rgba(34,197,94,.06)":dayPnl<0?"rgba(239,68,68,.06)":T.bgCard):T.bgCard,
+                        boxShadow:isToday?`0 0 0 2px ${T.accent}44`:"none",transition:"all .15s"}}>
+                      <div style={{fontSize:10,fontWeight:isToday?800:600,color:isToday?T.accent:T.textSecondary,marginBottom:3}}>{day}</div>
+                      {hasTrades&&<div style={{display:"flex",flexDirection:"column",gap:2}}>
+                        {closedCnt>0&&<div style={{fontSize:9,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:hasWin?T.green:T.red}}>{dayPnl>=0?"+":""}{dayPnl.toFixed(0)}$</div>}
+                        <div style={{display:"flex",gap:2}}>
+                          {closedCnt>0&&<span style={{fontSize:8,padding:"1px 3px",borderRadius:2,background:hasWin?"rgba(34,197,94,.15)":"rgba(239,68,68,.15)",color:hasWin?T.green:T.red,fontWeight:700}}>{closedCnt}k</span>}
+                          {openCnt>0&&<span style={{fontSize:8,padding:"1px 3px",borderRadius:2,background:"rgba(234,179,8,.15)",color:T.gold,fontWeight:700}}>{openCnt}a</span>}
+                        </div>
+                      </div>}
+                    </div>;
+                })}
+              </div>
+              {calMonthTrades.length>0&&(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:12}}>
+                  {[
+                    {l:"Ay K/Z",v:(calMonthPnl>=0?"+":"")+calMonthPnl.toFixed(0)+"$",c:calMonthPnl>=0?T.green:T.red},
+                    {l:"Trade Sayısı",v:String(calMonthTrades.length),c:T.text},
+                    {l:"Kazanma",v:calMonthClosed>0?(calMonthWins/calMonthClosed*100).toFixed(0)+"%":"—",c:T.accent},
+                    {l:"Trade Günü",v:String(calTradeDays),c:T.gold},
+                  ].map((k,i)=>(
+                    <div key={i} style={{...st.card,padding:12,textAlign:"center"}}>
+                      <div style={{fontSize:9,color:T.textMuted,marginBottom:3}}>{k.l}</div>
+                      <div style={{fontSize:15,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:k.c}}>{k.v}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>}
 
           {tradeView==="notes"&&<div style={{animation:"fadeUp .4s ease-out"}}>
@@ -2885,6 +2878,11 @@ export default function CryptoPortfolio() {
               : <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 {trades.filter(t=>t.notes||t.mistakes||t.lessons).map((t,i)=>(
                     <div key={t.id||i} style={{...st.card,padding:0,overflow:"hidden",borderLeft:`3px solid ${t.status==="Kapali"?(calcPnl(t)>0?T.green:T.red):T.gold}`}}>
+                      {t.screenshot&&<div style={{height:180,overflow:"hidden",borderBottom:`1px solid ${T.border}`,position:"relative",cursor:"pointer"}} onClick={()=>window.open(t.screenshot,"_blank")}>
+                        <img src={t.screenshot} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                        <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 60%,rgba(0,0,0,.4))"}}/>
+                        <div style={{position:"absolute",bottom:8,right:8,fontSize:10,padding:"3px 8px",borderRadius:4,background:"rgba(0,0,0,.6)",color:"#fff"}}>🔍 Büyüt</div>
+                      </div>}
                       <div style={{padding:"12px 16px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                         <div style={{display:"flex",alignItems:"center",gap:8}}>
                           <span style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{t.symbol}</span>
