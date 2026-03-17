@@ -818,11 +818,11 @@ export default function CryptoPortfolio() {
 
     const normalize = (articles) => articles.map(a => ({
       ...a,
-      // Portföy coini mi kontrol et
-      isPortfolio: portfolioCoins.some(s =>
-        a.title?.toUpperCase().includes(s) ||
-        (a.currencies || []).includes(s)
-      ),
+      isPortfolio: portfolioCoins.some(s => {
+        const title = a.title ? a.title.toUpperCase() : "";
+        const curs = Array.isArray(a.currencies) ? a.currencies : [];
+        return title.includes(s) || curs.includes(s);
+      }),
     }));
 
     // ── Kaynak 1: Vercel proxy (tüm kaynakları dener) ──
@@ -1899,6 +1899,30 @@ export default function CryptoPortfolio() {
   const curChart=chartData[`${selChart}-${chartPeriod}`]||[];
   const st={card:{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:14,padding:20,overflow:"hidden",backdropFilter:"blur(10px)"},th:{padding:"10px 12px",fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,fontWeight:600,textAlign:"left",borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"},td:{padding:"11px 12px",fontSize:13,borderBottom:`1px solid ${T.border}`,verticalAlign:"middle"},tt:{background:T.bgInput,border:`1px solid ${T.borderLight}`,borderRadius:8,color:T.text,fontSize:12,fontFamily:"'JetBrains Mono',monospace"}};
 
+  // ── News hesaplamaları (IIFE yerine) ──
+  const newsPortfolioCoins = [...new Set(
+    Object.values(portfolios).flat().map(p => {
+      const c = knownCoins.find(x => x.id === p.coinId);
+      return c?.symbol?.toUpperCase();
+    }).filter(Boolean)
+  )].slice(0, 15);
+
+  const newsFiltered = newsFilter === "portfolio"
+    ? newsData.filter(a => {
+        if (a.isPortfolio) return true;
+        const title = a.title ? a.title.toUpperCase() : "";
+        const curs = Array.isArray(a.currencies) ? a.currencies : [];
+        return newsPortfolioCoins.some(s => title.includes(s) || curs.includes(s));
+      })
+    : newsData;
+
+  const newsTimeAgo = (ts) => {
+    const d = (Date.now() - ts) / 1000;
+    if (d < 3600) return Math.floor(d / 60) + " dk önce";
+    if (d < 86400) return Math.floor(d / 3600) + " sa önce";
+    return Math.floor(d / 86400) + " gün önce";
+  };
+
   if (showSplash) return <SplashScreen onFinish={() => setShowSplash(false)} />;
   if (!isLoggedIn) return <AuthScreen onLogin={async (user) => { const name = user.displayName || user.email?.split("@")[0] || (user.isAnonymous ? "Misafir" : "Kullanici"); setCurrentUser(name); setFirebaseUser(user); firebaseUserRef.current = user; if (!user.isAnonymous) { try { const data = await getUserData(user.uid); if (data && data.portfolios) { setPortfolios(data.portfolios); if (data.sections) setSections(data.sections); } else { const lp = localStorage.getItem("ip_portfolios"); if (lp) { const p = JSON.parse(lp); setPortfolios(p); await savePortfolios(user.uid, p, sections); } } } catch(e) { console.error("Firestore:", e); } } setDataLoaded(true); dataLoadedRef.current = true; setIsLoggedIn(true); }} />;
 
@@ -2212,8 +2236,7 @@ export default function CryptoPortfolio() {
                           <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:isUp?T.green:T.red,minWidth:60,textAlign:"right"}}>{isUp?"+":""}{a.change.toFixed(2)}%</span>
                         </div>
                       </div>
-                    );
-                  })}
+                  ))}
                 </div>
                 <div style={{marginTop:10,fontSize:10,color:T.textMuted}}>* Portföy: tüm zamanlık K/Z oranı · BTC/ETH/SOL: seçili dönem değişimi</div>
               </div>
@@ -2501,34 +2524,28 @@ export default function CryptoPortfolio() {
                     <div style={{fontSize:10,color:T.textMuted,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>Miktar ($)</div>
                   </div>
                   {/* Entry 1 */}
-                  {[1,2,3].map(n => {
-                    const colors = ["#3b82f6","#9333EA","#F59E0B"];
-                    const c = colors[n-1];
-                    return (
+                  {[
+                    {n:1,c:"#3b82f6"},
+                    {n:2,c:"#9333EA"},
+                    {n:3,c:"#F59E0B"},
+                  ].map(({n,c}) => (
                       <div key={n} style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:8,marginBottom:8,alignItems:"center"}}>
                         <div style={{fontSize:11,fontWeight:700,color:c,padding:"8px 0",display:"flex",alignItems:"center",gap:4}}>
                           <div style={{width:6,height:6,borderRadius:"50%",background:c}}/>
                           Entry {n}
                         </div>
-                        <input type="number" value={newTrade[`entry${n}Price`]||""} onChange={e=>{
-                          const val = e.target.value;
-                          setNewTrade(p=>{
-                            const np = {...p,[`entry${n}Price`]:val};
-                            // ortalama fiyatı yeniden hesapla
-                            const entries = [1,2,3].map(i=>({p:parseFloat(np[`entry${i}Price`]||0),a:parseFloat(np[`entry${i}Amount`]||0)})).filter(e=>e.p>0&&e.a>0);
+                        <input type="number" value={newTrade[`entry${n}Price`]||""} onChange={e=>setNewTrade(p=>{
+                          const np = {...p,[`entry${n}Price`]:e.target.value};
+                          const entries = [1,2,3].map(i=>({p:parseFloat(np[`entry${i}Price`]||0),a:parseFloat(np[`entry${i}Amount`]||0)})).filter(e=>e.p>0&&e.a>0);
                             if(entries.length>0){const ta=entries.reduce((s,e)=>s+e.a,0);const tq=entries.reduce((s,e)=>s+e.a/e.p,0);np.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);np.amount=String(ta);}
-                            return np;
-                          });
-                        }} placeholder="0.00" style={{padding:"9px 12px",background:T.bg,border:`1px solid ${c}33`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=c+"88"} onBlur={e=>e.target.style.borderColor=c+"33"}/>
-                        <input type="number" value={newTrade[`entry${n}Amount`]||""} onChange={e=>{
-                          const val = e.target.value;
-                          setNewTrade(p=>{
-                            const np = {...p,[`entry${n}Amount`]:val};
-                            const entries = [1,2,3].map(i=>({p:parseFloat(np[`entry${i}Price`]||0),a:parseFloat(np[`entry${i}Amount`]||0)})).filter(e=>e.p>0&&e.a>0);
+                          return np;
+                        })} placeholder="0.00" style={{padding:"9px 12px",background:T.bg,border:`1px solid ${c}33`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=c+"88"} onBlur={e=>e.target.style.borderColor=c+"33"}/>
+                        <input type="number" value={newTrade[`entry${n}Amount`]||""} onChange={e=>setNewTrade(p=>{
+                          const np = {...p,[`entry${n}Amount`]:e.target.value};
+                          const entries = [1,2,3].map(i=>({p:parseFloat(np[`entry${i}Price`]||0),a:parseFloat(np[`entry${i}Amount`]||0)})).filter(e=>e.p>0&&e.a>0);
                             if(entries.length>0){const ta=entries.reduce((s,e)=>s+e.a,0);const tq=entries.reduce((s,e)=>s+e.a/e.p,0);np.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);np.amount=String(ta);}
-                            return np;
-                          });
-                        }} placeholder="100" style={{padding:"9px 12px",background:T.bg,border:`1px solid ${c}33`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=c+"88"} onBlur={e=>e.target.style.borderColor=c+"33"}/>
+                          return np;
+                        })} placeholder="100" style={{padding:"9px 12px",background:T.bg,border:`1px solid ${c}33`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=c+"88"} onBlur={e=>e.target.style.borderColor=c+"33"}/>
                       </div>
                     );
                   })}
@@ -2645,7 +2662,7 @@ export default function CryptoPortfolio() {
           </div>}
 
           {/* ═══ ANALYTICS ═══ */}
-          {tradeView==="analytics"&&(()=>{
+          {tradeView==="analytics"&&<>{(()=>{
             const totalVolume = trades.reduce((s,t)=>s+parseFloat(t.amount||0),0);
             var totalVolumeAll = trades.reduce((s,t)=>s+parseFloat(t.amount||0),0);
             var openPnl = trades.filter(t=>t.status==="Acik"&&t.entryPrice).reduce((s,t)=>{const cp=prices[t.symbol?.split("/")[0]?.toLowerCase()]?.usd||0;if(!cp)return s;const e=parseFloat(t.entryPrice),a=parseFloat(t.amount||0),l=parseFloat(t.leverage)||1;return s+(t.direction==="Long"?(cp-e)/e*a*l:(e-cp)/e*a*l);},0);
@@ -2747,7 +2764,8 @@ export default function CryptoPortfolio() {
                 </div>
               </div>
             </div>;
-          })()}
+          })()}</>
+}
 
           {/* ═══ NOTLAR — Hata & Ders Günlüğü ═══ */}
           {tradeView==="notes"&&<div style={{animation:"tabSwitch .3s cubic-bezier(.22,1,.36,1) both"}}>
@@ -2851,28 +2869,8 @@ export default function CryptoPortfolio() {
 
 
         {/* ═══ HABERLER ═══ */}
-        {tab==="news"&&(()=>{
-          // Portföy coinleri
-          var portfolioCoins = [...new Set(
-            Object.values(portfolios).flat().map(p=>{
-              const c=knownCoins.find(x=>x.id===p.coinId);
-              return c?.symbol?.toUpperCase();
-            }).filter(Boolean)
-          )].slice(0,15);
-
-          // Filtrele
-          var filtered = newsFilter==="portfolio"
-            ? newsData.filter(a=>a.isPortfolio || portfolioCoins.some(s=>a.title?.toUpperCase().includes(s)||(a.currencies||[]).includes(s)))
-            : newsData;
-
-          var timeAgo = (ts) => {
-            var d=(Date.now()-ts)/1000;
-            if(d<3600) return Math.floor(d/60)+" dk önce";
-            if(d<86400) return Math.floor(d/3600)+" sa önce";
-            return Math.floor(d/86400)+" gün önce";
-          };
-
-          return <div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
+        {tab==="news"&&
+        <div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
             {/* Header */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
               <div>
@@ -2889,7 +2887,7 @@ export default function CryptoPortfolio() {
             {/* Filtre sekmeler */}
             <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
               {[
-                {v:"portfolio",l:`🎯 Portföyüm (${portfolioCoins.length} coin)`,accent:true},
+                {v:"portfolio",l:`🎯 Portföyüm (${newsPortfolioCoins.length} coin)`,accent:true},
                 {v:"all",l:"🌐 Tümü",accent:false},
               ].map(f=>(
                 <button key={f.v} onClick={()=>setNewsFilter(f.v)}
@@ -2898,9 +2896,9 @@ export default function CryptoPortfolio() {
                 </button>
               ))}
               {/* Portföy coin chip'leri */}
-              {newsFilter==="portfolio" && portfolioCoins.length>0 && (
+              {newsFilter==="portfolio" && newsPortfolioCoins.length>0 && (
                 <div style={{display:"flex",gap:4,flexWrap:"wrap",marginLeft:4}}>
-                  {portfolioCoins.slice(0,12).map(sym=>(
+                  {newsPortfolioCoins.slice(0,12).map(sym=>(
                     <span key={sym} style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"#9333EA18",color:"#9333EA",fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{sym}</span>
                   ))}
                 </div>
@@ -2914,7 +2912,7 @@ export default function CryptoPortfolio() {
                 <div style={{fontSize:16,fontWeight:700,color:T.text,marginBottom:8}}>Haberler yüklensin mi?</div>
                 <div style={{fontSize:13,color:T.textMuted,marginBottom:20,lineHeight:1.7}}>
                   Portföyündeki coinlerle ilgili haberleri otomatik filtreleyeceğiz.<br/>
-                  <span style={{color:"#9333EA",fontWeight:600}}>{portfolioCoins.join(", ") || "—"}</span>
+                  <span style={{color:"#9333EA",fontWeight:600}}>{newsPortfolioCoins.join(", ") || "—"}</span>
                 </div>
                 <button onClick={()=>fetchNews("portfolio")}
                   style={{padding:"12px 32px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 20px rgba(147,51,234,.3)"}}>
@@ -2940,19 +2938,19 @@ export default function CryptoPortfolio() {
             {/* Sonuç sayısı */}
             {newsLoaded && !newsLoading && (
               <div style={{fontSize:12,color:T.textMuted,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{color:T.textSecondary,fontWeight:600}}>{filtered.length}</span> haber bulundu
-                {newsFilter==="portfolio" && filtered.length===0 && newsData.length>0 && (
+                <span style={{color:T.textSecondary,fontWeight:600}}>{newsFiltered.length}</span> haber bulundu
+                {newsFilter==="portfolio" && newsFiltered.length===0 && newsData.length>0 && (
                   <span style={{color:"#EAB308"}}> · Portföy coinleri için haber yok, tüm haberlere geçin</span>
                 )}
               </div>
             )}
 
             {/* Haberler Grid */}
-            {newsLoaded && !newsLoading && filtered.length > 0 && (
+            {newsLoaded && !newsLoading && newsFiltered.length > 0 && (
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
-                {filtered.map((article,i)=>{
+                {newsFiltered.map((article,i)=>{
                   const sentColor=article.sentiment==="bullish"?T.green:article.sentiment==="bearish"?T.red:null;
-                  const matchCoins=(article.currencies||[]).filter(s=>portfolioCoins.includes(s));
+                  const matchCoins=(article.currencies||[]).filter(s=>newsPortfolioCoins.includes(s));
                   return (
                     <a key={article.id||i} href={article.url} target="_blank" rel="noopener noreferrer"
                       style={{textDecoration:"none",display:"block",...st.card,padding:0,overflow:"hidden",cursor:"pointer",
@@ -2980,7 +2978,7 @@ export default function CryptoPortfolio() {
                           <span style={{fontSize:10,fontWeight:700,color:T.accent,textTransform:"uppercase",letterSpacing:.5,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{article.source}</span>
                           <div style={{display:"flex",alignItems:"center",gap:5}}>
                             {sentColor&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:3,background:sentColor+"18",color:sentColor,fontWeight:700}}>{article.sentiment==="bullish"?"📈":"📉"}</span>}
-                            <span style={{fontSize:10,color:T.textMuted,whiteSpace:"nowrap"}}>{timeAgo(article.publishedAt)}</span>
+                            <span style={{fontSize:10,color:T.textMuted,whiteSpace:"nowrap"}}>{newsTimeAgo(article.publishedAt)}</span>
                           </div>
                         </div>
                         {/* Başlık */}
@@ -3002,7 +3000,7 @@ export default function CryptoPortfolio() {
               </div>
             )}
 
-            {newsLoaded && !newsLoading && filtered.length === 0 && newsData.length > 0 && (
+            {newsLoaded && !newsLoading && newsFiltered.length === 0 && newsData.length > 0 && (
               <div style={{...st.card,padding:48,textAlign:"center"}}>
                 <div style={{fontSize:36,marginBottom:12}}>🔍</div>
                 <div style={{fontSize:14,color:T.text,fontWeight:600,marginBottom:8}}>Portföy coinleri için haber bulunamadı</div>
@@ -3010,8 +3008,8 @@ export default function CryptoPortfolio() {
                 <button onClick={()=>setNewsFilter("all")} style={{padding:"8px 20px",background:T.accentGlow,border:`1px solid ${T.accent}44`,borderRadius:8,color:T.accent,fontSize:12,fontWeight:600,cursor:"pointer"}}>Tüm Haberlere Geç</button>
               </div>
             )}
-          </div>;
-        })()}
+          </div>
+        }
 
         {tab==="reports"&&<div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
           {/* Report Actions */}
