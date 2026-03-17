@@ -1,72 +1,100 @@
-// /api/news.js — Vercel Serverless Function
-// CryptoCompare ücretsiz haber API'si
+// /api/news.js — Vercel Serverless
+// Çoklu kaynak: CryptoPanic → CryptoCompare → CoinGecko
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
+  res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=300");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const { category = "all", lang = "EN", limit = "30" } = req.query;
+  const { currencies = "", category = "all", limit = "40" } = req.query;
+  const lim = Math.min(parseInt(limit) || 40, 60);
 
   const headers = {
-    "User-Agent": "Mozilla/5.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "application/json",
   };
 
+  const normalize = (articles) => articles.filter(Boolean).slice(0, lim);
+
+  // ── Kaynak 1: CryptoPanic (ücretsiz, coin filtresi var) ──
   try {
-    const catParam = category !== "all" ? `&categories=${encodeURIComponent(category)}` : "";
-    const url = `https://min-api.cryptocompare.com/data/v2/news/?lang=${lang}&sortOrder=latest${catParam}&extraParams=InvestPulse`;
-
+    const curParam = currencies ? `&currencies=${encodeURIComponent(currencies)}` : "";
+    const kindParam = category !== "all" ? `&filter=${encodeURIComponent(category)}` : "";
+    const url = `https://cryptopanic.com/api/free/v1/posts/?auth_token=FREE&public=true&kind=news${curParam}${kindParam}`;
     const r = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
-    if (!r.ok) throw new Error(`CryptoCompare HTTP ${r.status}`);
-    const data = await r.json();
-
-    const articles = (data.Data || []).slice(0, parseInt(limit)).map(a => ({
-      id: String(a.id),
-      title: a.title,
-      body: a.body ? a.body.slice(0, 300) + (a.body.length > 300 ? "..." : "") : "",
-      url: a.url,
-      imageUrl: a.imageurl || "",
-      source: a.source_info?.name || a.source || "Unknown",
-      sourceLogo: a.source_info?.img || "",
-      publishedAt: (a.published_on || 0) * 1000,
-      categories: a.categories || "",
-      tags: a.tags || "",
-      sentiment: a.body?.toLowerCase().includes("bullish") || a.tags?.toLowerCase().includes("bullish")
-        ? "bullish"
-        : a.body?.toLowerCase().includes("bearish") || a.tags?.toLowerCase().includes("bearish")
-        ? "bearish"
-        : "neutral",
-    }));
-
-    return res.status(200).json({ articles, total: articles.length, ts: Date.now() });
-  } catch (e) {
-    // Fallback: CryptoPanic RSS benzeri public endpoint
-    try {
-      const r2 = await fetch(
-        "https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest",
-        { headers, signal: AbortSignal.timeout(8000) }
-      );
-      if (r2.ok) {
-        const data = await r2.json();
-        const articles = (data.Data || []).slice(0, 20).map(a => ({
+    if (r.ok) {
+      const d = await r.json();
+      if (d?.results?.length > 0) {
+        const articles = d.results.map(a => ({
           id: String(a.id),
           title: a.title,
-          body: a.body ? a.body.slice(0, 300) : "",
+          body: a.metadata?.description?.slice(0, 280) || "",
+          url: a.url,
+          imageUrl: a.metadata?.image || "",
+          source: a.source?.title || a.domain || "CryptoPanic",
+          publishedAt: new Date(a.published_at).getTime(),
+          currencies: (a.currencies || []).map(c => c.code),
+          sentiment: a.votes?.positive > a.votes?.negative ? "bullish"
+                   : a.votes?.negative > a.votes?.positive ? "bearish" : "neutral",
+          provider: "cryptopanic",
+        }));
+        return res.status(200).json({ articles: normalize(articles), source: "cryptopanic" });
+      }
+    }
+  } catch(e) { console.log("CryptoPanic:", e.message); }
+
+  // ── Kaynak 2: CryptoCompare ──
+  try {
+    const catParam = (currencies || category !== "all")
+      ? `&categories=${encodeURIComponent(currencies || category)}`
+      : "";
+    const url = `https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest${catParam}`;
+    const r = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+    if (r.ok) {
+      const d = await r.json();
+      if (d?.Data?.length > 0) {
+        const articles = d.Data.map(a => ({
+          id: String(a.id),
+          title: a.title,
+          body: a.body?.slice(0, 280) || "",
           url: a.url,
           imageUrl: a.imageurl || "",
-          source: a.source_info?.name || a.source || "News",
-          sourceLogo: "",
+          source: a.source_info?.name || a.source || "CryptoCompare",
           publishedAt: (a.published_on || 0) * 1000,
-          categories: a.categories || "",
-          tags: "",
-          sentiment: "neutral",
+          currencies: (a.categories || "").split("|").map(s => s.trim()).filter(Boolean),
+          sentiment: a.body?.toLowerCase().includes("bullish") ? "bullish"
+                   : a.body?.toLowerCase().includes("bearish") ? "bearish" : "neutral",
+          provider: "cryptocompare",
         }));
-        return res.status(200).json({ articles, total: articles.length, ts: Date.now() });
+        return res.status(200).json({ articles: normalize(articles), source: "cryptocompare" });
       }
-    } catch (e2) {}
+    }
+  } catch(e) { console.log("CryptoCompare:", e.message); }
 
-    return res.status(502).json({ error: e.message, articles: [] });
-  }
+  // ── Kaynak 3: CoinGecko News ──
+  try {
+    const url = `https://api.coingecko.com/api/v3/news?per_page=${lim}`;
+    const r = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+    if (r.ok) {
+      const d = await r.json();
+      if (Array.isArray(d) && d.length > 0) {
+        const articles = d.map(a => ({
+          id: String(a.id || Math.random()),
+          title: a.title,
+          body: a.description?.slice(0, 280) || "",
+          url: a.url,
+          imageUrl: a.thumb_2x || a.thumb || "",
+          source: a.author || "CoinGecko",
+          publishedAt: new Date(a.updated_at || a.created_at || Date.now()).getTime(),
+          currencies: [],
+          sentiment: "neutral",
+          provider: "coingecko",
+        }));
+        return res.status(200).json({ articles: normalize(articles), source: "coingecko" });
+      }
+    }
+  } catch(e) { console.log("CoinGecko:", e.message); }
+
+  return res.status(200).json({ articles: [], source: "none", error: "All sources failed" });
 }

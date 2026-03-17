@@ -764,6 +764,7 @@ export default function CryptoPortfolio() {
   const [newsData, setNewsData] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsCategory, setNewsCategory] = useState("all");
+  const [newsFilter, setNewsFilter] = useState("portfolio"); // portfolio | all | coin
   const [newsLoaded, setNewsLoaded] = useState(false);
 
   // ── Hedef Fiyat & Stop-Loss (Add Modal) ──
@@ -800,43 +801,135 @@ export default function CryptoPortfolio() {
   }, [showTxModal, txCoinId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Haber Akışı Fetch ──
-  const fetchNews = useCallback(async (category = "all") => {
+  const fetchNews = useCallback(async (filterMode = "portfolio", customCoins = null) => {
     setNewsLoading(true);
+    setNewsLoaded(false);
+
+    // Portföydeki tüm coin sembollerini çek
+    const portfolioCoins = [...new Set(
+      Object.values(portfolios).flat().map(p => {
+        const coin = knownCoins.find(c => c.id === p.coinId);
+        return coin?.symbol?.toUpperCase();
+      }).filter(Boolean)
+    )].slice(0, 20);
+
+    const coinsToFetch = customCoins || (filterMode === "portfolio" ? portfolioCoins : []);
+    const currenciesParam = coinsToFetch.length > 0 ? coinsToFetch.join(",") : "";
+
+    const normalize = (articles) => articles.map(a => ({
+      ...a,
+      // Portföy coini mi kontrol et
+      isPortfolio: portfolioCoins.some(s =>
+        a.title?.toUpperCase().includes(s) ||
+        (a.currencies || []).includes(s)
+      ),
+    }));
+
+    // ── Kaynak 1: Vercel proxy (tüm kaynakları dener) ──
     try {
       const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-      const catParam = category !== "all" ? `&category=${encodeURIComponent(category)}` : "";
-      const r = await fetch(`${baseUrl}/api/news?lang=EN${catParam}`, { signal: AbortSignal.timeout(12000) });
+      const params = new URLSearchParams({ limit: "50" });
+      if (currenciesParam) params.set("currencies", currenciesParam);
+      const r = await fetch(`${baseUrl}/api/news?${params}`, { signal: AbortSignal.timeout(12000) });
       if (r.ok) {
         const data = await r.json();
         if (data?.articles?.length > 0) {
-          setNewsData(data.articles);
+          setNewsData(normalize(data.articles));
           setNewsLoaded(true);
           setNewsLoading(false);
           return;
         }
       }
     } catch(e) {}
-    // Fallback: CryptoCompare direkt
+
+    // ── Kaynak 2: CryptoPanic direkt (browser CORS açık) ──
     try {
-      const catParam = category !== "all" ? `&categories=${encodeURIComponent(category)}` : "";
-      const r = await fetch(`https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest${catParam}`, { signal: AbortSignal.timeout(10000) });
+      const curParam = currenciesParam ? `&currencies=${encodeURIComponent(currenciesParam)}` : "";
+      const r = await fetch(
+        `https://cryptopanic.com/api/free/v1/posts/?auth_token=FREE&public=true&kind=news${curParam}`,
+        { signal: AbortSignal.timeout(10000) }
+      );
       if (r.ok) {
-        const data = await r.json();
-        const articles = (data.Data || []).slice(0, 30).map(a => ({
-          id: String(a.id), title: a.title,
-          body: a.body ? a.body.slice(0, 300) + "..." : "",
-          url: a.url, imageUrl: a.imageurl || "",
-          source: a.source_info?.name || a.source || "News",
-          publishedAt: (a.published_on || 0) * 1000,
-          categories: a.categories || "",
-          sentiment: "neutral",
-        }));
-        setNewsData(articles);
-        setNewsLoaded(true);
+        const d = await r.json();
+        if (d?.results?.length > 0) {
+          const articles = d.results.map(a => ({
+            id: String(a.id),
+            title: a.title,
+            body: a.metadata?.description?.slice(0, 280) || "",
+            url: a.url,
+            imageUrl: a.metadata?.image || "",
+            source: a.source?.title || a.domain || "CryptoPanic",
+            publishedAt: new Date(a.published_at).getTime(),
+            currencies: (a.currencies || []).map(c => c.code),
+            sentiment: a.votes?.positive > a.votes?.negative ? "bullish"
+                     : a.votes?.negative > a.votes?.positive ? "bearish" : "neutral",
+          }));
+          setNewsData(normalize(articles));
+          setNewsLoaded(true);
+          setNewsLoading(false);
+          return;
+        }
       }
     } catch(e) {}
+
+    // ── Kaynak 3: CryptoCompare direkt ──
+    try {
+      const catParam = currenciesParam ? `&categories=${encodeURIComponent(currenciesParam)}` : "";
+      const r = await fetch(
+        `https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest${catParam}`,
+        { signal: AbortSignal.timeout(10000) }
+      );
+      if (r.ok) {
+        const d = await r.json();
+        if (d?.Data?.length > 0) {
+          const articles = d.Data.slice(0, 40).map(a => ({
+            id: String(a.id),
+            title: a.title,
+            body: a.body?.slice(0, 280) || "",
+            url: a.url,
+            imageUrl: a.imageurl || "",
+            source: a.source_info?.name || a.source || "CryptoCompare",
+            publishedAt: (a.published_on || 0) * 1000,
+            currencies: (a.categories || "").split("|").map(s => s.trim()).filter(Boolean),
+            sentiment: a.body?.toLowerCase().includes("bullish") ? "bullish"
+                     : a.body?.toLowerCase().includes("bearish") ? "bearish" : "neutral",
+          }));
+          setNewsData(normalize(articles));
+          setNewsLoaded(true);
+          setNewsLoading(false);
+          return;
+        }
+      }
+    } catch(e) {}
+
+    // ── Kaynak 4: CoinGecko News ──
+    try {
+      const r = await fetch(
+        `https://api.coingecko.com/api/v3/news?per_page=50`,
+        { signal: AbortSignal.timeout(10000) }
+      );
+      if (r.ok) {
+        const d = await r.json();
+        if (Array.isArray(d) && d.length > 0) {
+          const articles = d.map(a => ({
+            id: String(a.id || Math.random()),
+            title: a.title,
+            body: a.description?.slice(0, 280) || "",
+            url: a.url,
+            imageUrl: a.thumb_2x || a.thumb || "",
+            source: a.author || "CoinGecko",
+            publishedAt: new Date(a.updated_at || Date.now()).getTime(),
+            currencies: [],
+            sentiment: "neutral",
+          }));
+          setNewsData(normalize(articles));
+          setNewsLoaded(true);
+        }
+      }
+    } catch(e) {}
+
     setNewsLoading(false);
-  }, []);
+  }, [portfolios, knownCoins]);
 
   // Trade helper functions
   const calcPnl = (t) => { if (!t.entryPrice || !t.exitPrice) return 0; const e=parseFloat(t.entryPrice),x=parseFloat(t.exitPrice),a=parseFloat(t.amount)||parseFloat(t.entry1Amount||0)+parseFloat(t.entry2Amount||0)+parseFloat(t.entry3Amount||0)||100,l=parseFloat(t.leverage)||1; return t.direction==="Long"?(x-e)/e*a*l:(e-x)/e*a*l; };
@@ -1402,6 +1495,8 @@ export default function CryptoPortfolio() {
   },[resolveBinancePrice,chartPeriod,prices,buildUrl,log]);
 
   useEffect(()=>{fetchPrices();return()=>{if(retryRef.current)clearTimeout(retryRef.current);};},[]);
+  // Haberler sekmesine geçince otomatik yükle
+  useEffect(()=>{ if(tab==="news" && !newsLoaded && !newsLoading) fetchNews("portfolio"); },[tab]); // eslint-disable-line
   useEffect(()=>{if(intRef.current)clearInterval(intRef.current);intRef.current=setInterval(()=>{if(connStatus!=="retrying"&&connStatus!=="ratelimited")fetchPrices();},refreshInterval);return()=>{if(intRef.current)clearInterval(intRef.current);};},[refreshInterval,connStatus,fetchPrices]);
 
   // FMP tüm hisse listesi — startup'ta çek, 24 saat cache'le
@@ -2687,102 +2782,167 @@ export default function CryptoPortfolio() {
 
 
         {/* ═══ HABERLER ═══ */}
-        {tab==="news"&&<div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
-          {/* Header */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
-            <div>
-              <div style={{fontSize:20,fontWeight:700,color:T.text}}>📰 Piyasa Haberleri</div>
-              <div style={{fontSize:13,color:T.textMuted}}>Kripto & Finans • CryptoCompare</div>
-            </div>
-            <button onClick={()=>fetchNews(newsCategory)} disabled={newsLoading}
-              style={{padding:"8px 16px",background:T.bgCard,border:`1px solid ${T.border}`,color:T.accent,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:6}}>
-              {newsLoading ? <span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>◌</span> : "↻"} Yenile
-            </button>
-          </div>
+        {tab==="news"&&(()=>{
+          // Portföy coinleri
+          const portfolioCoins = [...new Set(
+            Object.values(portfolios).flat().map(p=>{
+              const c=knownCoins.find(x=>x.id===p.coinId);
+              return c?.symbol?.toUpperCase();
+            }).filter(Boolean)
+          )].slice(0,15);
 
-          {/* Kategori Filtreleri */}
-          <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-            {[{v:"all",l:"Tümü"},{v:"BTC",l:"Bitcoin"},{v:"ETH",l:"Ethereum"},{v:"Trading",l:"Trading"},{v:"Technology",l:"Teknoloji"},{v:"Regulation",l:"Regülasyon"},{v:"Market",l:"Piyasa"}].map(c=>(
-              <button key={c.v} onClick={()=>{setNewsCategory(c.v);fetchNews(c.v);}}
-                style={{padding:"6px 12px",background:newsCategory===c.v?T.accentGlow:"transparent",border:`1px solid ${newsCategory===c.v?T.accent+"44":T.border}`,color:newsCategory===c.v?T.accent:T.textMuted,fontSize:11,fontWeight:600,cursor:"pointer",borderRadius:6,fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
-                {c.l}
+          // Filtrele
+          const filtered = newsFilter==="portfolio"
+            ? newsData.filter(a=>a.isPortfolio || portfolioCoins.some(s=>a.title?.toUpperCase().includes(s)||(a.currencies||[]).includes(s)))
+            : newsData;
+
+          const timeAgo = (ts) => {
+            const d=(Date.now()-ts)/1000;
+            if(d<3600) return Math.floor(d/60)+" dk önce";
+            if(d<86400) return Math.floor(d/3600)+" sa önce";
+            return Math.floor(d/86400)+" gün önce";
+          };
+
+          return <div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
+            {/* Header */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+              <div>
+                <div style={{fontSize:20,fontWeight:700,color:T.text}}>📰 Piyasa Haberleri</div>
+                <div style={{fontSize:13,color:T.textMuted}}>CryptoPanic • CryptoCompare • CoinGecko</div>
+              </div>
+              <button onClick={()=>fetchNews(newsFilter)} disabled={newsLoading}
+                style={{padding:"8px 16px",background:T.bgCard,border:`1px solid ${T.border}`,color:T.accent,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:6,transition:"all .2s"}}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor=T.accent+"66";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;}}>
+                {newsLoading?<span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>◌</span>:"↻"} Yenile
               </button>
-            ))}
-          </div>
-
-          {/* İlk yükleme */}
-          {!newsLoaded && !newsLoading && (
-            <div style={{...st.card,padding:60,textAlign:"center"}}>
-              <div style={{fontSize:40,marginBottom:12}}>📰</div>
-              <div style={{fontSize:15,fontWeight:600,color:T.text,marginBottom:8}}>Haberler yüklensin mi?</div>
-              <div style={{fontSize:13,color:T.textMuted,marginBottom:16}}>CryptoCompare üzerinden güncel kripto haberleri</div>
-              <button onClick={()=>fetchNews("all")} style={{padding:"10px 24px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Haberleri Yükle</button>
             </div>
-          )}
 
-          {/* Loading skeleton */}
-          {newsLoading && (
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
-              {[...Array(6)].map((_,i)=>(
-                <div key={i} style={{...st.card,padding:16}}>
-                  <div style={{height:160,background:T.border,borderRadius:8,marginBottom:12,animation:"skeletonPulse 1.5s infinite"}}/>
-                  <div style={{height:14,background:T.border,borderRadius:4,marginBottom:8,width:"90%",animation:"skeletonPulse 1.5s infinite"}}/>
-                  <div style={{height:14,background:T.border,borderRadius:4,marginBottom:8,width:"70%",animation:"skeletonPulse 1.5s infinite"}}/>
-                  <div style={{height:12,background:T.border,borderRadius:4,width:"40%",animation:"skeletonPulse 1.5s infinite"}}/>
-                </div>
+            {/* Filtre sekmeler */}
+            <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+              {[
+                {v:"portfolio",l:`🎯 Portföyüm (${portfolioCoins.length} coin)`,accent:true},
+                {v:"all",l:"🌐 Tümü",accent:false},
+              ].map(f=>(
+                <button key={f.v} onClick={()=>setNewsFilter(f.v)}
+                  style={{padding:"7px 16px",background:newsFilter===f.v?"linear-gradient(135deg,#9333EA,#7C3AED)":T.bgCard,border:`1px solid ${newsFilter===f.v?"#9333EA44":T.border}`,color:newsFilter===f.v?"#fff":T.textSecondary,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
+                  {f.l}
+                </button>
               ))}
+              {/* Portföy coin chip'leri */}
+              {newsFilter==="portfolio" && portfolioCoins.length>0 && (
+                <div style={{display:"flex",gap:4,flexWrap:"wrap",marginLeft:4}}>
+                  {portfolioCoins.slice(0,12).map(sym=>(
+                    <span key={sym} style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"#9333EA18",color:"#9333EA",fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{sym}</span>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Haberler Grid */}
-          {newsLoaded && !newsLoading && newsData.length > 0 && (
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
-              {newsData.map((article,i)=>{
-                const timeAgo = (ts) => {
-                  const diff = (Date.now() - ts) / 1000;
-                  if (diff < 3600) return Math.floor(diff/60) + " dk önce";
-                  if (diff < 86400) return Math.floor(diff/3600) + " sa önce";
-                  return Math.floor(diff/86400) + " gün önce";
-                };
-                const sentColor = article.sentiment === "bullish" ? T.green : article.sentiment === "bearish" ? T.red : T.textMuted;
-                return (
-                  <a key={article.id} href={article.url} target="_blank" rel="noopener noreferrer"
-                    className="news-card" style={{textDecoration:"none",display:"block",...st.card,padding:0,overflow:"hidden",transition:"transform .2s, border-color .2s, box-shadow .2s",cursor:"pointer",animation:`newsSlide ${0.15+i*0.05}s cubic-bezier(.22,1,.36,1) both`}}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=T.accent+"44";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.borderColor=T.border;}}>
-                    {/* Haber Görseli */}
-                    {article.imageUrl ? (
-                      <div style={{height:160,overflow:"hidden",background:T.bgCardSolid}}>
-                        <img src={article.imageUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform .3s"}}
-                          onError={e=>{ e.target.parentElement.style.display="none"; }}/>
-                      </div>
-                    ) : (
-                      <div style={{height:80,background:`linear-gradient(135deg,${T.accent}11,${T.bgCardSolid})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>📰</div>
-                    )}
-                    <div style={{padding:14}}>
-                      {/* Kaynak & Zaman */}
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                        <span style={{fontSize:10,fontWeight:700,color:T.accent,textTransform:"uppercase",letterSpacing:.5}}>{article.source}</span>
-                        <div style={{display:"flex",alignItems:"center",gap:6}}>
-                          {article.sentiment !== "neutral" && <span style={{fontSize:9,padding:"1px 6px",borderRadius:3,background:sentColor+"18",color:sentColor,fontWeight:700}}>{article.sentiment === "bullish" ? "📈 Bullish" : "📉 Bearish"}</span>}
-                          <span style={{fontSize:10,color:T.textMuted}}>{timeAgo(article.publishedAt)}</span>
+            {/* İlk yükleme */}
+            {!newsLoaded && !newsLoading && (
+              <div style={{...st.card,padding:60,textAlign:"center"}}>
+                <div style={{fontSize:48,marginBottom:16}}>📰</div>
+                <div style={{fontSize:16,fontWeight:700,color:T.text,marginBottom:8}}>Haberler yüklensin mi?</div>
+                <div style={{fontSize:13,color:T.textMuted,marginBottom:20,lineHeight:1.7}}>
+                  Portföyündeki coinlerle ilgili haberleri otomatik filtreleyeceğiz.<br/>
+                  <span style={{color:"#9333EA",fontWeight:600}}>{portfolioCoins.join(", ") || "—"}</span>
+                </div>
+                <button onClick={()=>fetchNews("portfolio")}
+                  style={{padding:"12px 32px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 20px rgba(147,51,234,.3)"}}>
+                  🚀 Haberleri Yükle
+                </button>
+              </div>
+            )}
+
+            {/* Loading */}
+            {newsLoading && (
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
+                {[...Array(6)].map((_,i)=>(
+                  <div key={i} style={{...st.card,padding:16}}>
+                    <div style={{height:150,background:T.border,borderRadius:8,marginBottom:12,animation:"skeletonPulse 1.5s infinite"}}/>
+                    <div style={{height:13,background:T.border,borderRadius:4,marginBottom:8,width:"85%",animation:"skeletonPulse 1.5s infinite"}}/>
+                    <div style={{height:13,background:T.border,borderRadius:4,marginBottom:8,width:"65%",animation:"skeletonPulse 1.5s infinite"}}/>
+                    <div style={{height:11,background:T.border,borderRadius:4,width:"40%",animation:"skeletonPulse 1.5s infinite"}}/>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Sonuç sayısı */}
+            {newsLoaded && !newsLoading && (
+              <div style={{fontSize:12,color:T.textMuted,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{color:T.textSecondary,fontWeight:600}}>{filtered.length}</span> haber bulundu
+                {newsFilter==="portfolio" && filtered.length===0 && newsData.length>0 && (
+                  <span style={{color:"#EAB308"}}> · Portföy coinleri için haber yok, tüm haberlere geçin</span>
+                )}
+              </div>
+            )}
+
+            {/* Haberler Grid */}
+            {newsLoaded && !newsLoading && filtered.length > 0 && (
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
+                {filtered.map((article,i)=>{
+                  const sentColor=article.sentiment==="bullish"?T.green:article.sentiment==="bearish"?T.red:null;
+                  const matchCoins=(article.currencies||[]).filter(s=>portfolioCoins.includes(s));
+                  return (
+                    <a key={article.id||i} href={article.url} target="_blank" rel="noopener noreferrer"
+                      style={{textDecoration:"none",display:"block",...st.card,padding:0,overflow:"hidden",cursor:"pointer",
+                        borderColor:article.isPortfolio?T.accent+"44":T.border,
+                        transition:"transform .2s,border-color .2s,box-shadow .2s",
+                        animation:`newsSlide ${Math.min(0.1+i*0.04,0.6)}s cubic-bezier(.22,1,.36,1) both`}}
+                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=`0 8px 32px rgba(0,0,0,.3)`;e.currentTarget.style.borderColor=T.accent+"66";}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";e.currentTarget.style.borderColor=article.isPortfolio?T.accent+"44":T.border;}}>
+                      {/* Görsel */}
+                      {article.imageUrl?(
+                        <div style={{height:150,overflow:"hidden",background:T.bgCardSolid,position:"relative"}}>
+                          <img src={article.imageUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
+                            onError={e=>{e.target.parentElement.style.background=`linear-gradient(135deg,#9333EA11,${T.bgCardSolid})`;e.target.style.display="none";}}/>
+                          {article.isPortfolio && <div style={{position:"absolute",top:8,right:8,fontSize:9,padding:"2px 7px",borderRadius:3,background:"rgba(147,51,234,.85)",color:"#fff",fontWeight:700,backdropFilter:"blur(4px)"}}>🎯 Portföy</div>}
                         </div>
+                      ):(
+                        <div style={{height:70,background:`linear-gradient(135deg,${T.accent}0d,${T.bgCardSolid})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,position:"relative"}}>
+                          📰
+                          {article.isPortfolio && <div style={{position:"absolute",top:8,right:8,fontSize:9,padding:"2px 7px",borderRadius:3,background:"rgba(147,51,234,.85)",color:"#fff",fontWeight:700}}>🎯 Portföy</div>}
+                        </div>
+                      )}
+                      <div style={{padding:14}}>
+                        {/* Üst bar */}
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                          <span style={{fontSize:10,fontWeight:700,color:T.accent,textTransform:"uppercase",letterSpacing:.5,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{article.source}</span>
+                          <div style={{display:"flex",alignItems:"center",gap:5}}>
+                            {sentColor&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:3,background:sentColor+"18",color:sentColor,fontWeight:700}}>{article.sentiment==="bullish"?"📈":"📉"}</span>}
+                            <span style={{fontSize:10,color:T.textMuted,whiteSpace:"nowrap"}}>{timeAgo(article.publishedAt)}</span>
+                          </div>
+                        </div>
+                        {/* Başlık */}
+                        <div style={{fontSize:13,fontWeight:600,color:T.text,lineHeight:1.5,marginBottom:8,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{article.title}</div>
+                        {/* Özet */}
+                        {article.body&&<div style={{fontSize:11,color:T.textMuted,lineHeight:1.6,marginBottom:8,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{article.body}</div>}
+                        {/* Coin etiketleri */}
+                        {matchCoins.length>0&&(
+                          <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:8}}>
+                            {matchCoins.slice(0,5).map(s=>(
+                              <span key={s} style={{fontSize:9,padding:"2px 6px",borderRadius:3,background:"#9333EA18",color:"#9333EA",fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{s}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      {/* Başlık */}
-                      <div style={{fontSize:13,fontWeight:600,color:T.text,lineHeight:1.5,marginBottom:8,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{article.title}</div>
-                      {/* Özet */}
-                      <div style={{fontSize:11,color:T.textMuted,lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{article.body}</div>
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
-          )}
+                    </a>
+                  );
+                })}
+              </div>
+            )}
 
-          {newsLoaded && !newsLoading && newsData.length === 0 && (
-            <div style={{...st.card,padding:60,textAlign:"center",color:T.textMuted}}>Haber bulunamadı. Kategori değiştirin.</div>
-          )}
-        </div>}
+            {newsLoaded && !newsLoading && filtered.length === 0 && newsData.length > 0 && (
+              <div style={{...st.card,padding:48,textAlign:"center"}}>
+                <div style={{fontSize:36,marginBottom:12}}>🔍</div>
+                <div style={{fontSize:14,color:T.text,fontWeight:600,marginBottom:8}}>Portföy coinleri için haber bulunamadı</div>
+                <div style={{fontSize:12,color:T.textMuted,marginBottom:16}}>Genel haberleri görmek için "Tümü" seçin</div>
+                <button onClick={()=>setNewsFilter("all")} style={{padding:"8px 20px",background:T.accentGlow,border:`1px solid ${T.accent}44`,borderRadius:8,color:T.accent,fontSize:12,fontWeight:600,cursor:"pointer"}}>Tüm Haberlere Geç</button>
+              </div>
+            )}
+          </div>;
+        })()}
 
         {tab==="reports"&&<div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
           {/* Report Actions */}
