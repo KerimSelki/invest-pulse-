@@ -3318,7 +3318,6 @@ export default function CryptoPortfolio() {
         <iframe src={pdfPreviewUrl} style={{flex:1,border:"none",background:"#fff"}} title="PDF Preview"/>
       </div>}
 
-      <style>{animations + `body{background:${T.bg};transition:background .3s}`}</style>
 
       {/* 🔔 Toast Bildirimleri */}
       <div style={{position:"fixed",bottom:24,right:24,zIndex:10000,display:"flex",flexDirection:"column",gap:8,pointerEvents:"none"}}>
@@ -3434,45 +3433,88 @@ export default function CryptoPortfolio() {
             </div>))}
           </div>}
 
-          {/* 🔥 Portföyümde En Çok Yükselen & Düşenler */}
-          {allPData.length>1&&(()=>{
-            const sorted=[...allPData].filter(x=>x.currentPrice>0).sort((a,b)=>b.change24h-a.change24h);
-            const gainers=sorted.slice(0,5);
-            const losers=[...sorted].reverse().slice(0,5);
-            if(sorted.length===0) return null;
-            const renderItem=(item,i,max)=>{
-              const mc=getMarketColor(getMarketType(item.coinId));
-              const isUp=item.change24h>=0;
-              const absPct=Math.abs(item.change24h);
-              const maxPct=Math.max(...sorted.map(x=>Math.abs(x.change24h)),1);
-              const barW=Math.max((absPct/maxPct)*100,2);
-              return(<div key={item.coinId} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<max-1?`1px solid ${T.bgCardSolid}`:"none"}}>
-                <div style={{width:26,height:26,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,fontFamily:"'Inter',monospace",background:mc+"18",color:mc}}>{item.coin?.symbol?.charAt(0)||"?"}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:4}}>
-                    <span style={{fontWeight:600,fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.coin?.symbol}</span>
-                    <span style={{fontSize:7,padding:"1px 3px",borderRadius:2,background:mc+"15",color:mc,fontWeight:700}}>{getMarketLabel(getMarketType(item.coinId))}</span>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
-                    <div style={{flex:1,height:3,background:T.border,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:barW+"%",background:isUp?T.green:T.red,borderRadius:2,transition:"width .5s"}}/></div>
-                  </div>
-                </div>
-                <div style={{textAlign:"right",minWidth:80}}>
-                  <div style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:isUp?T.green:T.red}}>{isUp?"▲":"▼"} {absPct.toFixed(2)}%</div>
-                  <div style={{fontSize:10,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{fmt(item.currentValue)}</div>
-                </div>
-              </div>);
-            };
-            return(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
-              <div style={{...st.card,padding:16}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🚀</span><span style={{fontSize:13,fontWeight:600,color:T.green}}>En Çok Yükselen</span><span style={{fontSize:10,color:T.textMuted}}>(24s)</span></div>
-                {gainers.map((item,i)=>renderItem(item,i,gainers.length))}
-              </div>
-              <div style={{...st.card,padding:16}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>📉</span><span style={{fontSize:13,fontWeight:600,color:T.red}}>En Çok Düşen</span><span style={{fontSize:10,color:T.textMuted}}>(24s)</span></div>
-                {losers.map((item,i)=>renderItem(item,i,losers.length))}
-              </div>
-            </div>);
-          })()}
+      {/* 🔔 Toast Bildirimleri */}
+      <div style={{position:"fixed",bottom:24,right:24,zIndex:10000,display:"flex",flexDirection:"column",gap:8,pointerEvents:"none"}}>
+        {toasts.map(t=>(
+          <div key={t.id} style={{
+            padding:"12px 18px",borderRadius:10,fontSize:13,fontWeight:600,
+            background:t.type==="error"?"#EF4444":t.type==="alert"?"#D4A017":"#22C55E",
+            color:"#fff",boxShadow:"0 4px 20px rgba(0,0,0,.25)",
+            animation:"slideInRight .3s cubic-bezier(.22,1,.36,1)",
+            display:"flex",alignItems:"center",gap:8,maxWidth:320
+          }}>
+            <span>{t.type==="error"?"✕":t.type==="alert"?"🔔":"✓"}</span>
+            {t.msg}
+          </div>
+        ))}
+      </div>
 
+      {/* ⌨️ Command Palette */}
+      {cmdOpen&&(
+        <div onClick={()=>setCmdOpen(false)} style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.5)",backdropFilter:"blur(4px)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:"15vh"}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"min(560px,90vw)",background:T.bgCardSolid,borderRadius:16,border:`1px solid ${T.borderLight}`,boxShadow:"0 24px 80px rgba(0,0,0,.5)",overflow:"hidden",animation:"fadeUp .2s ease-out"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px",borderBottom:`1px solid ${T.border}`}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input autoFocus value={cmdQuery} onChange={e=>setCmdQuery(e.target.value)}
+                placeholder="Sekmeler, trade ekle, coin ara..."
+                style={{flex:1,background:"transparent",border:"none",color:T.text,fontSize:15,outline:"none",fontFamily:"'Inter',sans-serif"}}/>
+              <kbd style={{fontSize:10,padding:"2px 6px",borderRadius:4,background:T.bgInput,border:`1px solid ${T.border}`,color:T.textMuted}}>ESC</kbd>
+            </div>
+            <div style={{maxHeight:320,overflowY:"auto"}}>
+              {[
+                {icon:"⚡",label:"Aktif İşlemler",action:()=>{setTab("trade");setTradeView("list");setCmdOpen(false);}},
+                {icon:"➕",label:"Yeni Trade",action:()=>{setTab("trade");setTradeView("add");resetNewTrade();setEditTrade(null);setCmdOpen(false);}},
+                {icon:"📊",label:"Analitik & Takvim",action:()=>{setTab("trade");setTradeView("analytics");setCmdOpen(false);}},
+                {icon:"🏠",label:"Dashboard",action:()=>{setTab("overview");setCmdOpen(false);}},
+                {icon:"💼",label:"Portföy",action:()=>{setTab("portfolio");setCmdOpen(false);}},
+                {icon:"📰",label:"Haberler",action:()=>{setTab("news");setCmdOpen(false);}},
+              ].filter(item=>!cmdQuery||item.label.toLowerCase().includes(cmdQuery.toLowerCase())).map((item,i)=>(
+                <div key={i} onClick={item.action}
+                  style={{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",cursor:"pointer",transition:"background .1s",borderBottom:`1px solid ${T.border}`}}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.accentGlow}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <span style={{fontSize:18,width:24,textAlign:"center"}}>{item.icon}</span>
+                  <span style={{fontSize:13,color:T.text,fontWeight:500}}>{item.label}</span>
+                </div>
+              ))}
+              {cmdQuery&&knownCoins.filter(c=>c.symbol.toLowerCase().includes(cmdQuery.toLowerCase())||c.name.toLowerCase().includes(cmdQuery.toLowerCase())).slice(0,5).map(coin=>(
+                <div key={coin.id} onClick={()=>{setTab("trade");setTradeView("add");resetNewTrade();setNewTrade(p=>({...p,symbol:coin.symbol+"/USDT"}));setCmdOpen(false);}}
+                  style={{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",cursor:"pointer",transition:"background .1s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.accentGlow}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{width:24,height:24,borderRadius:6,background:T.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:T.accent}}>{coin.symbol.charAt(0)}</div>
+                  <div><div style={{fontSize:13,color:T.text,fontWeight:600}}>{coin.symbol}</div><div style={{fontSize:10,color:T.textMuted}}>{coin.name}</div></div>
+                  {prices[coin.id]?.usd&&<div style={{marginLeft:"auto",fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:T.textSecondary}}>${prices[coin.id].usd<1?prices[coin.id].usd.toFixed(4):prices[coin.id].usd.toFixed(2)}</div>}
+                </div>
+              ))}
+            </div>
+            <div style={{padding:"8px 18px",borderTop:`1px solid ${T.border}`,display:"flex",gap:16}}>
+              {[["↵","Seç"],["ESC","Kapat"]].map(([k,l])=>(
+                <div key={k} style={{display:"flex",alignItems:"center",gap:4}}>
+                  <kbd style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:T.bgInput,border:`1px solid ${T.border}`,color:T.textMuted}}>{k}</kbd>
+                  <span style={{fontSize:10,color:T.textMuted}}>{l}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
+      {/* 🔍 Lightbox */}
+      {lightboxSrc&&(
+        <div onClick={()=>setLightboxSrc("")}
+          style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"zoom-out"}}>
+          <img src={lightboxSrc} alt=""
+            style={{maxWidth:"95vw",maxHeight:"93vh",objectFit:"contain",borderRadius:12,boxShadow:"0 20px 80px rgba(0,0,0,.8)"}}
+            onClick={e=>e.stopPropagation()}/>
+          <button onClick={()=>setLightboxSrc("")}
+            style={{position:"fixed",top:20,right:24,width:38,height:38,borderRadius:10,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.2)",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+      )}
+
+      <style>{animations + `body{background:${T.bg};transition:background .3s}`}</style>
+    </div>
+  );
+}
+
+export default App;
