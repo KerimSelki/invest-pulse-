@@ -652,13 +652,15 @@ export default function CryptoPortfolio() {
   const [tradeFilter, setTradeFilter] = useState("all"); // all | open | closed | win | loss
   const [tradeSearch, setTradeSearch] = useState("");
   const [tradeKasa, setTradeKasa] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_kasa") || "5000"); } catch(e) { return 5000; } });
+  const [tradeR, setTradeR] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_r") || "100"); } catch(e) { return 100; } });
   const [goals, setGoals] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_goals") || "[]"); } catch(e) { return []; } });
   const [editTrade, setEditTrade] = useState(null);
-  const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
+  const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",rAmount:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
 
   // Trade localStorage sync
   useEffect(() => { try { localStorage.setItem("ip_trades", JSON.stringify(trades)); } catch(e) {} }, [trades]);
   useEffect(() => { try { localStorage.setItem("ip_trade_kasa", String(tradeKasa)); } catch(e) {} }, [tradeKasa]);
+  useEffect(() => { try { localStorage.setItem("ip_trade_r", String(tradeR)); } catch(e) {} }, [tradeR]);
   useEffect(() => { try { localStorage.setItem("ip_goals", JSON.stringify(goals)); } catch(e) {} }, [goals]);
 
   // Trade helper functions
@@ -683,7 +685,7 @@ export default function CryptoPortfolio() {
   const shortCount = trades.filter(t=>t.direction==="Short").length;
   const monthlyPnlData = (()=>{ const mp={}; closedTrades.forEach(t=>{ const m=new Date(t.exitDate||t.entryDate).toLocaleDateString("tr-TR",{month:"short",year:"2-digit"}); mp[m]=(mp[m]||0)+calcPnl(t); }); return Object.entries(mp).map(([month,pnl])=>({month,pnl:+pnl.toFixed(2)})); })();
 
-  const resetNewTrade = () => setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
+  const resetNewTrade = () => setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",rAmount:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
 
   const saveTrade = () => {
     const t = editTrade !== null ? {...newTrade, id: trades[editTrade].id} : {...newTrade, id: Date.now()};
@@ -2190,6 +2192,88 @@ export default function CryptoPortfolio() {
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Durum</div><select value={newTrade.status} onChange={e=>setNewTrade(p=>({...p,status:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="Acik">Açık</option><option value="Kapali">Kapalı</option></select></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Kaldıraç</div><select value={newTrade.leverage} onChange={e=>setNewTrade(p=>({...p,leverage:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}>{["1x","2x","3x","5x","10x","20x","25x","50x","75x","100x","125x"].map(l=><option key={l}>{l}</option>)}</select></div>
                 </div>
+              </div>
+
+              {/* R Hesabı — Risk Yönetimi */}
+              <div style={{...st.card,borderLeft:`3px solid ${T.gold}`,background:`linear-gradient(135deg,rgba(212,160,23,.04),transparent)`}}>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:6,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span>🎲 R Hesabı</span>
+                  <span style={{fontSize:10,color:T.textMuted,fontWeight:400}}>Risk bazlı pozisyon büyüklüğü</span>
+                </div>
+                <div style={{fontSize:12,color:T.textMuted,marginBottom:14,lineHeight:1.7,padding:"8px 12px",background:T.bgInput,borderRadius:8,border:`1px solid ${T.border}`}}>
+                  <strong style={{color:T.gold}}>1R</strong> = Her işlemde riske ettiğin sabit miktar. SL'ye göre pozisyon otomatik hesaplanır.
+                  <span style={{display:"block",marginTop:4,fontSize:11,color:T.textMuted}}>Örnek: R=$100, Entry=$88, SL=$85 → Birim risk $3 → Pozisyon = $2.933</span>
+                </div>
+                {/* R ve Kasa ayarı */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
+                  <div>
+                    <div style={{fontSize:11,color:T.gold,marginBottom:6,fontWeight:700}}>1R Miktarı ($)</div>
+                    <div style={{display:"flex",alignItems:"center",gap:0,background:T.bgInput,border:`1px solid ${T.gold}44`,borderRadius:8,overflow:"hidden"}}>
+                      <button onClick={()=>setTradeR(r=>Math.max(1,r-10))} style={{padding:"10px 12px",background:"transparent",border:"none",color:T.gold,fontSize:16,cursor:"pointer",fontWeight:700}}>−</button>
+                      <input type="number" value={tradeR} onChange={e=>setTradeR(parseFloat(e.target.value)||0)}
+                        style={{flex:1,padding:"10px 4px",background:"transparent",border:"none",color:T.gold,fontSize:15,fontWeight:800,outline:"none",fontFamily:"'JetBrains Mono',monospace",textAlign:"center"}}/>
+                      <button onClick={()=>setTradeR(r=>r+10)} style={{padding:"10px 12px",background:"transparent",border:"none",color:T.gold,fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
+                    </div>
+                    <div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>
+                      {[50,100,200,500].map(r=>(
+                        <button key={r} onClick={()=>setTradeR(r)}
+                          style={{flex:1,padding:"5px",background:tradeR===r?T.goldGlow:T.bgInput,border:`1px solid ${tradeR===r?T.gold+"44":T.border}`,borderRadius:5,color:tradeR===r?T.gold:T.textMuted,fontSize:10,fontWeight:600,cursor:"pointer"}}>
+                          ${r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Risk/Ödül Oranı</div>
+                    {newTrade.entryPrice&&newTrade.stopLoss&&newTrade.tp1&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&parseFloat(newTrade.tp1)>0
+                      ? <div style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8}}>
+                          <div style={{fontSize:22,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:T.accent}}>
+                            {(Math.abs(parseFloat(newTrade.tp1)-parseFloat(newTrade.entryPrice))/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))).toFixed(2)}R
+                          </div>
+                          <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>TP1 / SL oranı</div>
+                        </div>
+                      : <div style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.textMuted,fontSize:12}}>Entry + SL + TP1 gir</div>
+                    }
+                  </div>
+                  <div>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Pozisyon Büyüklüğü</div>
+                    {newTrade.entryPrice&&newTrade.stopLoss&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))>0
+                      ? <div style={{padding:"10px 12px",background:`rgba(212,160,23,.08)`,border:`1px solid ${T.gold}33`,borderRadius:8}}>
+                          <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:T.gold}}>
+                            ${(tradeR/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*parseFloat(newTrade.entryPrice)).toFixed(0)}
+                          </div>
+                          <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>1R=${tradeR} ile hesaplandı</div>
+                          <button onClick={()=>setNewTrade(p=>({...p,amount:String((tradeR/Math.abs(parseFloat(p.entryPrice)-parseFloat(p.stopLoss))*parseFloat(p.entryPrice)).toFixed(0)),rAmount:String(tradeR)}))}
+                            style={{marginTop:6,width:"100%",padding:"5px",background:T.gold,border:"none",borderRadius:5,color:"#0B0D15",fontSize:10,fontWeight:700,cursor:"pointer"}}>
+                            ↑ Miktara Uygula
+                          </button>
+                        </div>
+                      : <div style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.textMuted,fontSize:12}}>Entry + SL gir</div>
+                    }
+                  </div>
+                </div>
+                {/* R Çarpanları özeti */}
+                {newTrade.entryPrice&&newTrade.stopLoss&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&(
+                  <div style={{padding:"10px 14px",background:T.bgInput,borderRadius:8,border:`1px solid ${T.border}`}}>
+                    <div style={{fontSize:10,color:T.textMuted,marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>R Tablosu</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {[-2,-1,-0.5,0.5,1,1.5,2,3,5].map(mult=>(
+                        <div key={mult} style={{flex:"1 1 80px",padding:"6px 8px",
+                          background:mult<0?"rgba(239,68,68,.06)":"rgba(34,197,94,.06)",
+                          border:`1px solid ${mult<0?T.red:T.green}22`,borderRadius:6,textAlign:"center"}}>
+                          <div style={{fontSize:10,fontWeight:700,color:mult<0?T.red:T.green}}>{mult>0?"+":""}{mult}R</div>
+                          <div style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:T.text,fontWeight:600}}>
+                            ${(newTrade.direction==="Long"
+                              ? parseFloat(newTrade.entryPrice)+Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*mult
+                              : parseFloat(newTrade.entryPrice)-Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*mult
+                            ).toFixed((parseFloat(newTrade.entryPrice)+Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*mult)<10?4:2)}
+                          </div>
+                          <div style={{fontSize:10,color:mult<0?T.red+"aa":T.green+"aa"}}>{tradeR*mult>0?"+":""}{(tradeR*mult).toFixed(0)}$</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Entry 1 / 2 / 3 — Fiyat & Miktar yanyana */}
