@@ -839,7 +839,7 @@ export default function CryptoPortfolio() {
   }, []);
 
   // Trade helper functions
-  const calcPnl = (t) => { if (!t.entryPrice || !t.exitPrice) return 0; const e=parseFloat(t.entryPrice),x=parseFloat(t.exitPrice),a=parseFloat(t.amount)||100,l=parseFloat(t.leverage)||1; return t.direction==="Long"?(x-e)/e*a*l:(e-x)/e*a*l; };
+  const calcPnl = (t) => { if (!t.entryPrice || !t.exitPrice) return 0; const e=parseFloat(t.entryPrice),x=parseFloat(t.exitPrice),a=parseFloat(t.amount)||parseFloat(t.entry1Amount||0)+parseFloat(t.entry2Amount||0)+parseFloat(t.entry3Amount||0)||100,l=parseFloat(t.leverage)||1; return t.direction==="Long"?(x-e)/e*a*l:(e-x)/e*a*l; };
   const calcPnlPct = (t) => { if (!t.entryPrice || !t.exitPrice) return 0; const e=parseFloat(t.entryPrice),x=parseFloat(t.exitPrice),l=parseFloat(t.leverage)||1; return t.direction==="Long"?(x-e)/e*100*l:(e-x)/e*100*l; };
   const closedTrades = trades.filter(t=>t.status==="Kapali");
   const winTrades = closedTrades.filter(t=>calcPnl(t)>0);
@@ -851,7 +851,7 @@ export default function CryptoPortfolio() {
   const profitFactor = avgLoss>0?(avgWin*winTrades.length)/(avgLoss*lossTrades.length):0;
   const maxDrawdown = (() => { let peak=0,dd=0,maxDd=0; closedTrades.sort((a,b)=>new Date(a.exitDate)-new Date(b.exitDate)).forEach(t=>{const eq=peak+calcPnl(t);if(eq>peak)peak=eq;dd=peak-eq;if(dd>maxDd)maxDd=dd;}); return maxDd; })();
 
-  const resetNewTrade = () => { setSymQ(""); setSymOpen(false); setSymResults([]); setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""}); };
+  const resetNewTrade = () => { setSymQ(""); setSymOpen(false); setSymResults([]); setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""}); };
 
   const saveTrade = () => {
     const t = editTrade !== null ? {...newTrade, id: trades[editTrade].id} : {...newTrade, id: Date.now()};
@@ -2223,7 +2223,7 @@ export default function CryptoPortfolio() {
               <div style={{fontSize:13,color:T.textMuted}}>{trades.length} trade • Toplam K/Z <span style={{color:totalPnl>=0?T.green:T.red,fontWeight:600}}>${totalPnl.toFixed(2)}</span></div>
             </div>
             <div style={{display:"flex",gap:8}}>
-              {[{v:"list",l:"Geçmiş",ic:"☰"},{v:"add",l:"Yeni Trade",ic:"+"},{v:"analytics",l:"Analitik",ic:"📊"},{v:"goals",l:"Hedefler",ic:"◎"}].map(v=>
+              {[{v:"list",l:"Geçmiş",ic:"☰"},{v:"add",l:"Yeni Trade",ic:"+"},{v:"analytics",l:"Analitik",ic:"📊"}].map(v=>
                 <button key={v.v} onClick={()=>{setTradeView(v.v);if(v.v==="add"){resetNewTrade();setEditTrade(null);}}} style={{padding:"8px 16px",background:tradeView===v.v?"linear-gradient(135deg,#9333EA,#D4A017)":T.bgCard,border:`1px solid ${tradeView===v.v?T.accent+"44":T.border}`,color:tradeView===v.v?"#fff":T.textSecondary,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:4}}>{v.ic} {v.l}</button>
               )}
             </div>
@@ -2275,10 +2275,21 @@ export default function CryptoPortfolio() {
           </>}
 
           {/* ═══ ADD/EDIT TRADE ═══ */}
-          {tradeView==="add"&&<div>
-            <div style={{display:"grid",gap:16}}>
+          {tradeView==="add"&&<div style={{animation:"tabSwitch .3s cubic-bezier(.22,1,.36,1) both"}}>
+            {/* Canlı özet bar */}
+            {(newTrade.entryPrice||newTrade.symbol) && (
+              <div style={{marginBottom:16,padding:"12px 18px",background:`linear-gradient(135deg,#9333EA0a,#3b82f60a)`,border:"1px solid #9333EA22",borderRadius:12,display:"flex",gap:20,alignItems:"center",flexWrap:"wrap"}}>
+                {newTrade.symbol&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,color:"#8B8EA0"}}>Sembol:</span><span style={{fontSize:13,fontWeight:700,color:"#E8E9ED",fontFamily:"'JetBrains Mono',monospace"}}>{newTrade.symbol}</span></div>}
+                {newTrade.direction&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,padding:"2px 8px",borderRadius:4,background:newTrade.direction==="Long"?"#22C55E18":"#EF444418",color:newTrade.direction==="Long"?"#22C55E":"#EF4444",fontWeight:700}}>{newTrade.direction}</span></div>}
+                {newTrade.entryPrice&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,color:"#8B8EA0"}}>Giriş:</span><span style={{fontSize:13,fontWeight:700,color:"#9333EA",fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.entryPrice).toFixed(newTrade.entryPrice<1?6:2)}</span></div>}
+                {newTrade.amount&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,color:"#8B8EA0"}}>Miktar:</span><span style={{fontSize:13,fontWeight:700,color:"#E8E9ED",fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.amount).toFixed(0)}</span></div>}
+                {newTrade.leverage&&newTrade.leverage!=="1x"&&<div style={{fontSize:11,padding:"2px 8px",borderRadius:4,background:"#D4A01718",color:"#D4A017",fontWeight:700}}>{newTrade.leverage}</div>}
+                <div style={{marginLeft:"auto",fontSize:11,color:"#4A4D65"}}>{newTrade.status==="Acik"?"🟡 Açık Pozisyon":"✅ Kapalı"}</div>
+              </div>
+            )}
+            <div style={{display:"grid",gap:14}}>
               {/* Trade Bilgileri */}
-              <div style={{...st.card,borderLeft:`3px solid ${T.accent}`}}>
+              <div style={{...st.card,borderLeft:`3px solid ${T.accent}`,boxShadow:`inset 0 0 40px ${T.accent}05`,transition:"box-shadow .3s"}}>
                 <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>📈 Trade Bilgileri</div>
                 {/* Sembol — autocomplete arama */}
                 <div style={{marginBottom:12}}>
@@ -2328,72 +2339,87 @@ export default function CryptoPortfolio() {
               </div>
 
               {/* Fiyat & Pozisyon */}
-              <div style={{...st.card,borderLeft:`3px solid #3b82f6`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>💲 Fiyat & Pozisyon</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+              <div style={{...st.card,borderLeft:`3px solid #3b82f6`,background:`linear-gradient(135deg,rgba(59,130,246,.04),${T.bgCardSolid})`,boxShadow:"inset 0 0 40px rgba(59,130,246,.03)"}}>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:16,display:"flex",alignItems:"center",gap:8}}>💲 Fiyat & Pozisyon</div>
+
+                {/* Çıkış fiyatı */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
                   <div>
-                    <div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Giriş Fiyatı</div>
-                    <input type="number" value={newTrade.entryPrice} onChange={e=>setNewTrade(p=>({...p,entryPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Çıkış Fiyatı</div>
+                    <input type="number" value={newTrade.exitPrice} onChange={e=>setNewTrade(p=>({...p,exitPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"11px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor="#9333EA66"} onBlur={e=>e.target.style.borderColor=""}/>
                   </div>
-                  <div>
-                    <div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Çıkış Fiyatı</div>
-                    <input type="number" value={newTrade.exitPrice} onChange={e=>setNewTrade(p=>({...p,exitPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                  </div>
-                </div>
-                {/* Entry 1 / Entry 2 / Ortalama Fiyat */}
-                <div style={{marginTop:12,padding:14,background:T.bgInput,borderRadius:10,border:`1px solid ${T.border}`}}>
-                  <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>📊 Ortalama Maliyet Hesapla</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10,alignItems:"flex-end"}}>
-                    <div>
-                      <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Entry 1 — Fiyat</div>
-                      <input type="number" value={newTrade.entry1Price||""} onChange={e=>setNewTrade(p=>({...p,entry1Price:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:12,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                    </div>
-                    <div>
-                      <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Entry 1 — Miktar ($)</div>
-                      <input type="number" value={newTrade.entry1Amount||""} onChange={e=>setNewTrade(p=>({...p,entry1Amount:e.target.value}))} placeholder="100" style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:12,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                    </div>
-                    <div>
-                      <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Entry 2 — Fiyat</div>
-                      <input type="number" value={newTrade.entry2Price||""} onChange={e=>setNewTrade(p=>({...p,entry2Price:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:12,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                    </div>
-                    <div>
-                      <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Entry 2 — Miktar ($)</div>
-                      <input type="number" value={newTrade.entry2Amount||""} onChange={e=>setNewTrade(p=>({...p,entry2Amount:e.target.value}))} placeholder="100" style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:12,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                    </div>
-                  </div>
-                  {/* Hesaplanmış ortalama */}
-                  {(() => {
-                    const e1p = parseFloat(newTrade.entry1Price||0);
-                    const e1a = parseFloat(newTrade.entry1Amount||0);
-                    const e2p = parseFloat(newTrade.entry2Price||0);
-                    const e2a = parseFloat(newTrade.entry2Amount||0);
-                    if (e1p > 0 && e1a > 0) {
-                      const totalAmt = e1a + (e2a > 0 ? e2a : 0);
-                      const qty1 = e1a / e1p;
-                      const qty2 = e2p > 0 && e2a > 0 ? e2a / e2p : 0;
-                      const totalQty = qty1 + qty2;
-                      const avgPrice = totalQty > 0 ? totalAmt / totalQty : 0;
+                  <div style={{display:"flex",alignItems:"flex-end"}}>
+                    {/* Canlı K/Z önizleme */}
+                    {newTrade.entryPrice && newTrade.exitPrice && newTrade.entry1Amount && (() => {
+                      const ep = parseFloat(newTrade.entryPrice||0);
+                      const xp = parseFloat(newTrade.exitPrice||0);
+                      const amt = parseFloat(newTrade.entry1Amount||0) + parseFloat(newTrade.entry2Amount||0) + parseFloat(newTrade.entry3Amount||0);
+                      const lev = parseFloat(newTrade.leverage)||1;
+                      const pnl = newTrade.direction==="Long" ? (xp-ep)/ep*amt*lev : (ep-xp)/ep*amt*lev;
+                      const pct = ep > 0 ? (newTrade.direction==="Long" ? (xp-ep)/ep*100*lev : (ep-xp)/ep*100*lev) : 0;
+                      const isUp = pnl >= 0;
                       return (
-                        <div style={{marginTop:12,display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
-                          <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                            <span style={{fontSize:11,color:T.textMuted}}>Toplam Miktar:</span>
-                            <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>${totalAmt.toFixed(2)}</span>
-                          </div>
-                          {avgPrice > 0 && <>
-                            <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                              <span style={{fontSize:11,color:T.textMuted}}>Ort. Fiyat:</span>
-                              <span style={{fontSize:14,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:"#9333EA"}}>${avgPrice < 1 ? avgPrice.toFixed(6) : avgPrice.toFixed(4)}</span>
-                            </div>
-                            <button onClick={()=>setNewTrade(p=>({...p,entryPrice:avgPrice.toFixed(avgPrice<1?6:4),amount:String(totalAmt)}))}
-                              style={{padding:"6px 14px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:6,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                              ↑ Giriş Fiyatına Uygula
-                            </button>
-                          </>}
+                        <div style={{padding:"10px 14px",background:isUp?"rgba(34,197,94,.08)":"rgba(239,68,68,.08)",border:`1px solid ${isUp?"#22C55E":"#EF4444"}33`,borderRadius:8,flex:1}}>
+                          <div style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Tahmini K/Z</div>
+                          <div style={{fontSize:18,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:isUp?"#22C55E":"#EF4444"}}>{isUp?"+":""}{pnl.toFixed(2)}$</div>
+                          <div style={{fontSize:11,color:isUp?"#22C55E99":"#EF444499"}}>{isUp?"+":""}{pct.toFixed(2)}%</div>
                         </div>
                       );
-                    }
-                    return null;
-                  })()}
+                    })()}
+                  </div>
+                </div>
+
+                {/* Entry 1/2/3 — alt alta fiyat+miktar çiftleri */}
+                <div style={{background:T.bgInput,borderRadius:10,padding:14,border:`1px solid ${T.border}`}}>
+                  <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:12,textTransform:"uppercase",letterSpacing:.5,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span>📊 Entry Seviyeleri & Ortalama Fiyat</span>
+                    {newTrade.entryPrice && <span style={{fontSize:12,color:"#9333EA",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>Ort: ${parseFloat(newTrade.entryPrice)<1?parseFloat(newTrade.entryPrice).toFixed(6):parseFloat(newTrade.entryPrice).toFixed(4)}</span>}
+                  </div>
+                  {/* Satır başlıkları */}
+                  <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:8,marginBottom:6}}>
+                    <div/>
+                    <div style={{fontSize:10,color:T.textMuted,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>Fiyat ($)</div>
+                    <div style={{fontSize:10,color:T.textMuted,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>Miktar ($)</div>
+                  </div>
+                  {/* Entry 1 */}
+                  {[1,2,3].map(n => {
+                    const colors = ["#3b82f6","#9333EA","#F59E0B"];
+                    const c = colors[n-1];
+                    return (
+                      <div key={n} style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:8,marginBottom:8,alignItems:"center"}}>
+                        <div style={{fontSize:11,fontWeight:700,color:c,padding:"8px 0",display:"flex",alignItems:"center",gap:4}}>
+                          <div style={{width:6,height:6,borderRadius:"50%",background:c}}/>
+                          Entry {n}
+                        </div>
+                        <input type="number" value={newTrade[`entry${n}Price`]||""} onChange={e=>{
+                          const val = e.target.value;
+                          setNewTrade(p=>{
+                            const np = {...p,[`entry${n}Price`]:val};
+                            // ortalama fiyatı yeniden hesapla
+                            const entries = [1,2,3].map(i=>({p:parseFloat(np[`entry${i}Price`]||0),a:parseFloat(np[`entry${i}Amount`]||0)})).filter(e=>e.p>0&&e.a>0);
+                            if(entries.length>0){const ta=entries.reduce((s,e)=>s+e.a,0);const tq=entries.reduce((s,e)=>s+e.a/e.p,0);np.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);np.amount=String(ta);}
+                            return np;
+                          });
+                        }} placeholder="0.00" style={{padding:"9px 12px",background:T.bg,border:`1px solid ${c}33`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=c+"88"} onBlur={e=>e.target.style.borderColor=c+"33"}/>
+                        <input type="number" value={newTrade[`entry${n}Amount`]||""} onChange={e=>{
+                          const val = e.target.value;
+                          setNewTrade(p=>{
+                            const np = {...p,[`entry${n}Amount`]:val};
+                            const entries = [1,2,3].map(i=>({p:parseFloat(np[`entry${i}Price`]||0),a:parseFloat(np[`entry${i}Amount`]||0)})).filter(e=>e.p>0&&e.a>0);
+                            if(entries.length>0){const ta=entries.reduce((s,e)=>s+e.a,0);const tq=entries.reduce((s,e)=>s+e.a/e.p,0);np.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);np.amount=String(ta);}
+                            return np;
+                          });
+                        }} placeholder="100" style={{padding:"9px 12px",background:T.bg,border:`1px solid ${c}33`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=c+"88"} onBlur={e=>e.target.style.borderColor=c+"33"}/>
+                      </div>
+                    );
+                  })}
+                  {/* Sonuç */}
+                  {newTrade.entryPrice && parseFloat(newTrade.entryPrice) > 0 && (
+                    <div style={{marginTop:8,padding:"10px 12px",background:`linear-gradient(135deg,#9333EA11,#3b82f611)`,borderRadius:8,border:"1px solid #9333EA22",display:"flex",gap:20,flexWrap:"wrap",alignItems:"center"}}>
+                      <div><span style={{fontSize:10,color:T.textMuted}}>Toplam Miktar: </span><span style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>${parseFloat(newTrade.amount||0).toFixed(2)}</span></div>
+                      <div><span style={{fontSize:10,color:T.textMuted}}>Ort. Giriş Fiyatı: </span><span style={{fontSize:14,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:"#9333EA"}}>${parseFloat(newTrade.entryPrice)<1?parseFloat(newTrade.entryPrice).toFixed(6):parseFloat(newTrade.entryPrice).toFixed(4)}</span></div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2445,69 +2471,117 @@ export default function CryptoPortfolio() {
               {/* Kaydet */}
               <div style={{display:"flex",gap:12,justifyContent:"flex-end"}}>
                 <button onClick={()=>{resetNewTrade();setEditTrade(null);setTradeView("list");}} style={{padding:"12px 24px",background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:10,color:T.textMuted,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>İptal</button>
-                <button onClick={saveTrade} style={{padding:"12px 32px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 20px rgba(147,51,234,.25)"}}>{editTrade!==null?"Güncelle":"Trade Kaydet"}</button>
+                <button onClick={saveTrade} style={{padding:"14px 40px",background:"linear-gradient(135deg,#9333EA,#7C3AED,#D4A017)",border:"none",borderRadius:12,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 6px 24px rgba(147,51,234,.35)",transition:"transform .15s, box-shadow .15s",letterSpacing:".3px"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 10px 32px rgba(147,51,234,.45)";}} onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="0 6px 24px rgba(147,51,234,.35)";}}>✓ {editTrade!==null?"Güncelle":"Trade Kaydet"}</button>
               </div>
             </div>
           </div>}
 
           {/* ═══ ANALYTICS ═══ */}
-          {tradeView==="analytics"&&<div>
-            {/* Özet Kartları */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-              <div style={{...st.card,borderLeft:`3px solid ${totalPnl>=0?T.green:T.red}`}}><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Toplam K/Z</div><div style={{fontSize:22,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:totalPnl>=0?T.green:T.red}}>${totalPnl.toFixed(2)}</div></div>
-              <div style={{...st.card,borderLeft:`3px solid ${T.gold}`}}><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Kazanma Oranı</div><div style={{fontSize:22,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.gold}}>{winRate.toFixed(1)}%</div></div>
-              <div style={{...st.card,borderLeft:`3px solid ${T.accent}`}}><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Profit Factor</div><div style={{fontSize:22,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.accent}}>{profitFactor.toFixed(2)}</div></div>
-              <div style={{...st.card,borderLeft:`3px solid #8B5CF6`}}><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Toplam Trade</div><div style={{fontSize:22,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"#8B5CF6"}}>{closedTrades.length}</div></div>
-            </div>
+          {tradeView==="analytics"&&(()=>{
+            const totalVolume = trades.reduce((s,t)=>s+parseFloat(t.amount||0),0);
+            const totalVolumeAll = trades.reduce((s,t)=>s+parseFloat(t.amount||0),0);
+            const openPnl = trades.filter(t=>t.status==="Acik"&&t.entryPrice).reduce((s,t)=>{const cp=prices[t.symbol?.split("/")[0]?.toLowerCase()]?.usd||0;if(!cp)return s;const e=parseFloat(t.entryPrice),a=parseFloat(t.amount||0),l=parseFloat(t.leverage)||1;return s+(t.direction==="Long"?(cp-e)/e*a*l:(e-cp)/e*a*l);},0);
+            const avgDuration = closedTrades.length>0?Math.round(closedTrades.reduce((s,t)=>{const d=t.exitDate&&t.entryDate?((new Date(t.exitDate)-new Date(t.entryDate))/3600000):0;return s+d;},0)/closedTrades.length):0;
+            const byMarket = trades.reduce((acc,t)=>{acc[t.market||"Kripto"]=(acc[t.market||"Kripto"]||0)+1;return acc;},{});
+            const byDir = {Long:trades.filter(t=>t.direction==="Long").length,Short:trades.filter(t=>t.direction==="Short").length};
+            const monthlyPnl = closedTrades.reduce((acc,t)=>{const m=new Date(t.exitDate||t.entryDate).toLocaleDateString("tr-TR",{month:"short",year:"2-digit"});acc[m]=(acc[m]||0)+calcPnl(t);return acc;},{});
+            const monthlyArr = Object.entries(monthlyPnl).map(([m,v])=>({month:m,pnl:+v.toFixed(2)}));
 
-            {/* Equity Eğrisi */}
-            <div style={{...st.card,marginBottom:20}}>
-              <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12}}>Equity Eğrisi</div>
-              {equityData.length>0?<ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={equityData}><defs><linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={T.accent} stopOpacity={0.3}/><stop offset="100%" stopColor={T.accent} stopOpacity={0}/></linearGradient></defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={T.border} /><XAxis dataKey="date" tick={{fontSize:10,fill:T.textMuted}} /><YAxis tick={{fontSize:10,fill:T.textMuted}} tickFormatter={v=>"$"+v} />
-                <Tooltip contentStyle={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12}} />
-                <Area type="monotone" dataKey="equity" stroke={T.accent} fill="url(#eqGrad)" strokeWidth={2} /></AreaChart>
-              </ResponsiveContainer>:<div style={{padding:40,textAlign:"center",color:T.textMuted}}>Kapalı trade verisi yok</div>}
-            </div>
-
-            {/* Detay Kartları */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-              <div style={st.card}><div style={{fontSize:11,color:T.textMuted}}>En İyi Trade</div><div style={{fontSize:16,fontWeight:700,color:T.green,fontFamily:"'JetBrains Mono',monospace"}}>${closedTrades.length>0?Math.max(...closedTrades.map(t=>calcPnl(t))).toFixed(2):"0.00"}</div></div>
-              <div style={st.card}><div style={{fontSize:11,color:T.textMuted}}>En Kötü Trade</div><div style={{fontSize:16,fontWeight:700,color:T.red,fontFamily:"'JetBrains Mono',monospace"}}>${closedTrades.length>0?Math.min(...closedTrades.map(t=>calcPnl(t))).toFixed(2):"0.00"}</div></div>
-              <div style={st.card}><div style={{fontSize:11,color:T.textMuted}}>Ort. Kazanç</div><div style={{fontSize:16,fontWeight:700,color:T.green,fontFamily:"'JetBrains Mono',monospace"}}>${avgWin.toFixed(2)}</div></div>
-              <div style={st.card}><div style={{fontSize:11,color:T.textMuted}}>Ort. Kayıp</div><div style={{fontSize:16,fontWeight:700,color:T.red,fontFamily:"'JetBrains Mono',monospace"}}>${avgLoss.toFixed(2)}</div></div>
-              <div style={st.card}><div style={{fontSize:11,color:T.textMuted}}>Max Drawdown</div><div style={{fontSize:16,fontWeight:700,color:T.red,fontFamily:"'JetBrains Mono',monospace"}}>${maxDrawdown.toFixed(2)}</div></div>
-              <div style={st.card}><div style={{fontSize:11,color:T.textMuted}}>Risk/Ödül</div><div style={{fontSize:16,fontWeight:700,color:T.accent,fontFamily:"'JetBrains Mono',monospace"}}>{avgLoss>0?(avgWin/avgLoss).toFixed(2):"0.00"}</div></div>
-              <div style={st.card}><div style={{fontSize:11,color:T.textMuted}}>Beklenti</div><div style={{fontSize:16,fontWeight:700,color:T.gold,fontFamily:"'JetBrains Mono',monospace"}}>${closedTrades.length>0?(totalPnl/closedTrades.length).toFixed(2):"0.00"}</div></div>
-              <div style={st.card}><div style={{fontSize:11,color:T.textMuted}}>Ort. Süre</div><div style={{fontSize:16,fontWeight:700,color:"#8B5CF6",fontFamily:"'JetBrains Mono',monospace"}}>{closedTrades.length>0?Math.round(closedTrades.reduce((s,t)=>{const d=t.exitDate&&t.entryDate?((new Date(t.exitDate)-new Date(t.entryDate))/3600000):0;return s+d;},0)/closedTrades.length)+"s":"0s"}</div></div>
-            </div>
-          </div>}
-
-          {/* ═══ GOALS ═══ */}
-          {tradeView==="goals"&&<div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-              <div style={{...st.card,borderLeft:`3px solid ${T.gold}`}}><div style={{fontSize:11,color:T.textMuted}}>Aktif Hedefler</div><div style={{fontSize:22,fontWeight:700,color:T.gold}}>{goals.filter(g=>g.status==="active").length}</div></div>
-              <div style={{...st.card,borderLeft:`3px solid ${T.green}`}}><div style={{fontSize:11,color:T.textMuted}}>Tamamlanan</div><div style={{fontSize:22,fontWeight:700,color:T.green}}>{goals.filter(g=>g.status==="done").length}</div></div>
-              <div style={{...st.card,borderLeft:`3px solid ${T.red}`}}><div style={{fontSize:11,color:T.textMuted}}>Duraklatılan</div><div style={{fontSize:22,fontWeight:700,color:T.red}}>{goals.filter(g=>g.status==="paused").length}</div></div>
-              <div style={{...st.card,borderLeft:`3px solid #8B5CF6`}}><div style={{fontSize:11,color:T.textMuted}}>Toplam</div><div style={{fontSize:22,fontWeight:700,color:"#8B5CF6"}}>{goals.length}</div></div>
-            </div>
-            {goals.length===0?
-              <div style={{...st.card,padding:60,textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>◎</div><div style={{fontSize:16,fontWeight:600,color:T.text,marginBottom:4}}>Henüz hedef yok</div><div style={{fontSize:13,color:T.textMuted,marginBottom:16}}>Trading hedeflerini belirleyerek motivasyonunu artır</div><button onClick={()=>{const g={id:Date.now(),title:"",target:"",current:0,deadline:"",status:"active",type:"pnl"};setGoals(prev=>[...prev,g]);}} style={{padding:"10px 24px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>İlk Hedefini Oluştur</button></div>
-            :
-              <div style={{display:"grid",gap:12}}>{goals.map((g,i)=><div key={g.id} style={{...st.card,display:"flex",alignItems:"center",gap:16}}>
-                <div style={{flex:1}}>
-                  <input value={g.title} onChange={e=>{const u=[...goals];u[i]={...u[i],title:e.target.value};setGoals(u);}} placeholder="Hedef başlığı..." style={{background:"transparent",border:"none",color:T.text,fontSize:15,fontWeight:600,outline:"none",width:"100%",fontFamily:"'Inter',sans-serif"}} />
-                  <div style={{display:"flex",gap:8,marginTop:6,alignItems:"center"}}>
-                    <select value={g.status} onChange={e=>{const u=[...goals];u[i]={...u[i],status:e.target.value};setGoals(u);}} style={{padding:"4px 8px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:4,color:T.text,fontSize:11,outline:"none"}}><option value="active">Aktif</option><option value="done">Tamamlandı</option><option value="paused">Duraklatıldı</option></select>
-                    <input type="date" value={g.deadline||""} onChange={e=>{const u=[...goals];u[i]={...u[i],deadline:e.target.value};setGoals(u);}} style={{padding:"4px 8px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:4,color:T.text,fontSize:11,outline:"none"}} />
+            return <div>
+              {/* Ana KPI Kartları — büyük */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+                {[
+                  {label:"Toplam K/Z",val:`${totalPnl>=0?"+":""}$${totalPnl.toFixed(2)}`,sub:`${winRate.toFixed(1)}% kazanma`,color:totalPnl>=0?T.green:T.red,icon:"💰",gradient:totalPnl>=0?"rgba(34,197,94,.08)":"rgba(239,68,68,.08)"},
+                  {label:"Toplam Hacim",val:`$${totalVolume>=1000?(totalVolume/1000).toFixed(1)+"K":totalVolume.toFixed(0)}`,sub:`${trades.length} toplam trade`,color:"#3b82f6",icon:"📊",gradient:"rgba(59,130,246,.08)"},
+                  {label:"Açık Pozisyon K/Z",val:`${openPnl>=0?"+":""}$${openPnl.toFixed(2)}`,sub:`${trades.filter(t=>t.status==="Acik").length} açık trade`,color:openPnl>=0?T.green:T.red,icon:"⚡",gradient:openPnl>=0?"rgba(34,197,94,.06)":"rgba(239,68,68,.06)"},
+                  {label:"Profit Factor",val:profitFactor.toFixed(2),sub:`R/Ö: ${avgLoss>0?(avgWin/avgLoss).toFixed(2):"—"}`,color:T.accent,icon:"🎯",gradient:"rgba(147,51,234,.08)"},
+                ].map((k,i)=>(
+                  <div key={i} style={{...st.card,background:k.gradient,border:`1px solid ${k.color}22`,padding:18,animation:`bounceIn ${.3+i*.06}s cubic-bezier(.22,1,.36,1) both`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                      <div style={{fontSize:11,color:T.textMuted,fontWeight:500}}>{k.label}</div>
+                      <span style={{fontSize:20}}>{k.icon}</span>
+                    </div>
+                    <div style={{fontSize:24,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:k.color,marginBottom:4}}>{k.val}</div>
+                    <div style={{fontSize:11,color:T.textMuted}}>{k.sub}</div>
                   </div>
+                ))}
+              </div>
+
+              {/* Equity Eğrisi + Aylık P&L */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+                <div style={{...st.card}}>
+                  <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:12,display:"flex",justifyContent:"space-between"}}>
+                    <span>📈 Equity Eğrisi</span>
+                    <span style={{fontSize:11,color:totalPnl>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace"}}>{totalPnl>=0?"+":""}${totalPnl.toFixed(2)}</span>
+                  </div>
+                  {equityData.length>0?<ResponsiveContainer width="100%" height={200}>
+                    <AreaChart data={equityData}><defs><linearGradient id="eqG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={totalPnl>=0?"#22C55E":"#EF4444"} stopOpacity={.3}/><stop offset="100%" stopColor={totalPnl>=0?"#22C55E":"#EF4444"} stopOpacity={0}/></linearGradient></defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={T.border}/><XAxis dataKey="date" tick={{fontSize:9,fill:T.textMuted}}/><YAxis tick={{fontSize:9,fill:T.textMuted}} tickFormatter={v=>"$"+v}/>
+                    <Tooltip contentStyle={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:8,fontSize:11}}/>
+                    <Area type="monotone" dataKey="equity" stroke={totalPnl>=0?"#22C55E":"#EF4444"} fill="url(#eqG)" strokeWidth={2.5}/>
+                  </AreaChart></ResponsiveContainer>:<div style={{height:200,display:"flex",alignItems:"center",justifyContent:"center",color:T.textMuted,fontSize:13}}>Kapalı trade verisi yok</div>}
                 </div>
-                <button onClick={()=>setGoals(prev=>prev.filter((_,j)=>j!==i))} style={{width:30,height:30,border:`1px solid ${T.red}33`,background:T.redGlow,color:T.red,borderRadius:6,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-              </div>)}</div>
-            }
-            {goals.length>0&&<button onClick={()=>setGoals(prev=>[...prev,{id:Date.now(),title:"",target:"",current:0,deadline:"",status:"active",type:"pnl"}])} style={{marginTop:12,padding:"10px 20px",background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:8,color:T.accent,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Yeni Hedef</button>}
-          </div>}
+                <div style={{...st.card}}>
+                  <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:12}}>📅 Aylık K/Z</div>
+                  {monthlyArr.length>0?<ResponsiveContainer width="100%" height={200}>
+                    <AreaChart data={monthlyArr}><defs><linearGradient id="mG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={T.accent} stopOpacity={.3}/><stop offset="100%" stopColor={T.accent} stopOpacity={0}/></linearGradient></defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={T.border}/><XAxis dataKey="month" tick={{fontSize:9,fill:T.textMuted}}/><YAxis tick={{fontSize:9,fill:T.textMuted}} tickFormatter={v=>"$"+v}/>
+                    <Tooltip contentStyle={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:8,fontSize:11}} formatter={v=>["$"+v.toFixed(2),"K/Z"]}/>
+                    <Area type="monotone" dataKey="pnl" stroke={T.accent} fill="url(#mG)" strokeWidth={2}/>
+                  </AreaChart></ResponsiveContainer>:<div style={{height:200,display:"flex",alignItems:"center",justifyContent:"center",color:T.textMuted,fontSize:13}}>Veri yok</div>}
+                </div>
+              </div>
+
+              {/* İstatistik grid */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+                {[
+                  {l:"En İyi Trade",v:`+$${closedTrades.length>0?Math.max(...closedTrades.map(t=>calcPnl(t))).toFixed(2):"0.00"}`,c:T.green},
+                  {l:"En Kötü Trade",v:`-$${closedTrades.length>0?Math.abs(Math.min(...closedTrades.map(t=>calcPnl(t)))).toFixed(2):"0.00"}`,c:T.red},
+                  {l:"Ort. Kazanç",v:`$${avgWin.toFixed(2)}`,c:T.green},
+                  {l:"Ort. Kayıp",v:`$${avgLoss.toFixed(2)}`,c:T.red},
+                  {l:"Max Drawdown",v:`$${maxDrawdown.toFixed(2)}`,c:T.red},
+                  {l:"Beklenti",v:`$${closedTrades.length>0?(totalPnl/closedTrades.length).toFixed(2):"0.00"}`,c:T.gold},
+                  {l:"Ort. Süre",v:avgDuration+"s",c:"#8B5CF6"},
+                  {l:"Toplam Trade",v:String(trades.length),c:T.accent},
+                ].map((k,i)=>(
+                  <div key={i} style={{...st.card,padding:14}}>
+                    <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>{k.l}</div>
+                    <div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:k.c}}>{k.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Piyasa & Yön Dağılımı */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                <div style={{...st.card,padding:16}}>
+                  <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>📊 Piyasa Dağılımı</div>
+                  {Object.entries(byMarket).map(([m,count])=>{
+                    const pct = trades.length > 0 ? count/trades.length*100 : 0;
+                    return (<div key={m} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                      <span style={{fontSize:12,color:T.textSecondary,minWidth:60}}>{m}</span>
+                      <div style={{flex:1,height:6,background:T.border,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:T.accent,borderRadius:3,transition:"width .5s"}}/></div>
+                      <span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:T.accent,minWidth:40,textAlign:"right"}}>{count} ({pct.toFixed(0)}%)</span>
+                    </div>);
+                  })}
+                </div>
+                <div style={{...st.card,padding:16}}>
+                  <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>📐 Long / Short</div>
+                  <div style={{display:"flex",gap:12,marginBottom:12}}>
+                    {[["Long",byDir.Long,T.green],["Short",byDir.Short,T.red]].map(([l,n,c])=>(
+                      <div key={l} style={{flex:1,padding:14,background:c+"0a",border:`1px solid ${c}22`,borderRadius:10,textAlign:"center"}}>
+                        <div style={{fontSize:11,color:c,marginBottom:4,fontWeight:600}}>{l}</div>
+                        <div style={{fontSize:24,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:c}}>{n}</div>
+                        <div style={{fontSize:10,color:T.textMuted}}>{trades.length>0?(n/trades.length*100).toFixed(0):0}%</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{fontSize:11,color:T.textMuted,marginTop:8}}>Toplam hacim: <span style={{color:"#3b82f6",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>${totalVolumeAll>=1000?(totalVolumeAll/1000).toFixed(1)+"K":totalVolumeAll.toFixed(0)}</span></div>
+                </div>
+              </div>
+            </div>;
+          })()}
+
+
         </div>}
 
 
