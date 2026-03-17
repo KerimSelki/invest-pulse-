@@ -654,6 +654,8 @@ export default function CryptoPortfolio() {
   const [tradeKasa, setTradeKasa] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_kasa") || "5000"); } catch(e) { return 5000; } });
   const [tradeR, setTradeR] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_r") || "100"); } catch(e) { return 100; } });
   const [entryCount, setEntryCount] = useState(3);
+  const [tradeTemplates, setTradeTemplates] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_trade_templates") || "[]"); } catch(e) { return []; } });
+  const [calendarMonth, setCalendarMonth] = useState(() => { const d=new Date(); return {y:d.getFullYear(),m:d.getMonth()}; });
   const [goals, setGoals] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_goals") || "[]"); } catch(e) { return []; } });
   const [editTrade, setEditTrade] = useState(null);
   const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",rAmount:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
@@ -662,6 +664,7 @@ export default function CryptoPortfolio() {
   useEffect(() => { try { localStorage.setItem("ip_trades", JSON.stringify(trades)); } catch(e) {} }, [trades]);
   useEffect(() => { try { localStorage.setItem("ip_trade_kasa", String(tradeKasa)); } catch(e) {} }, [tradeKasa]);
   useEffect(() => { try { localStorage.setItem("ip_trade_r", String(tradeR)); } catch(e) {} }, [tradeR]);
+  useEffect(() => { try { localStorage.setItem("ip_trade_templates", JSON.stringify(tradeTemplates)); } catch(e) {} }, [tradeTemplates]);
   useEffect(() => { try { localStorage.setItem("ip_goals", JSON.stringify(goals)); } catch(e) {} }, [goals]);
 
   // Trade helper functions
@@ -1702,6 +1705,23 @@ export default function CryptoPortfolio() {
   const curChart=chartData[`${selChart}-${chartPeriod}`]||[];
   const st={card:{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:14,padding:20,overflow:"hidden",backdropFilter:"blur(10px)"},th:{padding:"10px 12px",fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,fontWeight:600,textAlign:"left",borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"},td:{padding:"11px 12px",fontSize:13,borderBottom:`1px solid ${T.border}`,verticalAlign:"middle"},tt:{background:T.bgInput,border:`1px solid ${T.borderLight}`,borderRadius:8,color:T.text,fontSize:12,fontFamily:"'JetBrains Mono',monospace"}};
 
+  // ── Takvim computed ──
+  const calY = calendarMonth.y, calM = calendarMonth.m;
+  const calFirstDay = new Date(calY, calM, 1).getDay();
+  const calOffset = calFirstDay===0 ? 6 : calFirstDay-1;
+  const calDaysInMonth = new Date(calY, calM+1, 0).getDate();
+  const calCells = [];
+  for(let i=0;i<calOffset;i++) calCells.push(null);
+  for(let d=1;d<=calDaysInMonth;d++) calCells.push(d);
+  while(calCells.length%7!==0) calCells.push(null);
+
+  const calMonthStr = `${calY}-${String(calM+1).padStart(2,"0")}`;
+  const calMonthTrades = trades.filter(t => (t.entryDate||"").startsWith(calMonthStr));
+  const calMonthPnl = calMonthTrades.filter(t=>t.status==="Kapali").reduce((s,t)=>s+calcPnl(t),0);
+  const calMonthWins = calMonthTrades.filter(t=>t.status==="Kapali"&&calcPnl(t)>0).length;
+  const calMonthClosed = calMonthTrades.filter(t=>t.status==="Kapali").length;
+  const calTradeDays = new Set(calMonthTrades.map(t=>(t.entryDate||"").slice(0,10))).size;
+
   // ── Haberler için computed ──
   const newsPortfolioCoins = [...new Set(
     Object.values(portfolios).flat().map(p => {
@@ -2067,7 +2087,7 @@ export default function CryptoPortfolio() {
               <div style={{fontSize:13,color:T.textMuted}}>{trades.length} trade • Toplam K/Z <span style={{color:totalPnl>=0?T.green:T.red,fontWeight:600}}>${totalPnl.toFixed(2)}</span></div>
             </div>
             <div style={{display:"flex",gap:8}}>
-              {[{v:"list",l:"Geçmiş",ic:"☰"},{v:"add",l:"Yeni Trade",ic:"+"},{v:"analytics",l:"Analitik",ic:"📊"},{v:"notes",l:"Notlar",ic:"📝"}].map(v=>
+              {[{v:"list",l:"Geçmiş",ic:"☰"},{v:"add",l:"Yeni Trade",ic:"+"},{v:"calendar",l:"Takvim",ic:"📅"},{v:"analytics",l:"Analitik",ic:"📊"},{v:"notes",l:"Notlar",ic:"📝"}].map(v=>
                 <button key={v.v} onClick={()=>{setTradeView(v.v);if(v.v==="add"){resetNewTrade();setEditTrade(null);}}} style={{padding:"8px 16px",background:tradeView===v.v?"linear-gradient(135deg,#9333EA,#D4A017)":T.bgCard,border:`1px solid ${tradeView===v.v?T.accent+"44":T.border}`,color:tradeView===v.v?"#fff":T.textSecondary,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:4}}>{v.ic} {v.l}</button>
               )}
             </div>
@@ -2642,10 +2662,37 @@ export default function CryptoPortfolio() {
                 </div>
               </div>
 
+              {/* Şablonlar */}
+              {tradeTemplates.length>0&&(
+                <div style={{...st.card,padding:14}}>
+                  <div style={{fontSize:11,fontWeight:700,color:T.textMuted,marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>📋 Şablonlardan Yükle</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {tradeTemplates.map((tmpl,i)=>(
+                      <button key={i} onClick={()=>setNewTrade(p=>({...p,...tmpl,entryPrice:"",exitPrice:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",status:"Acik",rAmount:""}))}
+                        style={{padding:"6px 14px",background:T.accentGlow,border:`1px solid ${T.accent}44`,borderRadius:7,color:T.accent,fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+                        📋 {tmpl._name||tmpl.symbol||"Şablon "+(i+1)}
+                        <span onClick={e=>{e.stopPropagation();setTradeTemplates(prev=>prev.filter((_,j)=>j!==i));}}
+                          style={{marginLeft:2,color:T.textMuted,fontSize:10,background:T.bgInput,borderRadius:3,padding:"1px 4px",cursor:"pointer"}}>✕</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Kaydet */}
-              <div style={{display:"flex",gap:12,justifyContent:"flex-end"}}>
-                <button onClick={()=>{resetNewTrade();setEditTrade(null);setTradeView("list");}} style={{padding:"12px 24px",background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:10,color:T.textMuted,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>İptal</button>
-                <button onClick={saveTrade} style={{padding:"12px 32px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 20px rgba(147,51,234,.25)"}}>{editTrade!==null?"Güncelle":"Trade Kaydet"}</button>
+              <div style={{display:"flex",gap:12,justifyContent:"space-between",alignItems:"center"}}>
+                <button onClick={()=>{
+                  const name=prompt("Şablon adı (boş bırakabilirsin):");
+                  if(name===null) return;
+                  const tmpl={...newTrade,_name:name||newTrade.symbol||"Şablon"};
+                  setTradeTemplates(prev=>[...prev.filter(t=>t._name!==tmpl._name),tmpl]);
+                }} style={{padding:"10px 16px",background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:8,color:T.textMuted,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:6}}>
+                  💾 Şablon Kaydet
+                </button>
+                <div style={{display:"flex",gap:10}}>
+                  <button onClick={()=>{resetNewTrade();setEditTrade(null);setTradeView("list");}} style={{padding:"12px 24px",background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:10,color:T.textMuted,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>İptal</button>
+                  <button onClick={saveTrade} style={{padding:"12px 32px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 20px rgba(147,51,234,.25)"}}>{editTrade!==null?"Güncelle":"Trade Kaydet"}</button>
+                </div>
               </div>
             </div>
           </div>}
@@ -2724,9 +2771,110 @@ export default function CryptoPortfolio() {
                 ))}
               </div>
             </div>
+
+            {/* Setup Tipi Başarı Oranı */}
+            {trades.filter(t=>t.strategy&&t.strategy!=="").length>0&&(
+              <div style={{...st.card,marginTop:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:14}}>🎯 Setup Tipi Başarı Oranı</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
+                  {Object.entries(trades.filter(t=>t.strategy&&t.status==="Kapali").reduce((acc,t)=>{
+                    const k=t.strategy;
+                    if(!acc[k]) acc[k]={total:0,wins:0,pnl:0};
+                    acc[k].total++;
+                    if(calcPnl(t)>0) acc[k].wins++;
+                    acc[k].pnl+=calcPnl(t);
+                    return acc;
+                  },{})).sort((a,b)=>b[1].total-a[1].total).map(([strat,d])=>(
+                    <div key={strat} style={{padding:"10px 12px",background:T.bgInput,borderRadius:8,border:`1px solid ${d.wins/d.total>=0.6?T.green:d.wins/d.total>=0.4?T.gold:T.red}33`}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                        <span style={{fontSize:12,fontWeight:700,color:T.text}}>{strat}</span>
+                        <span style={{fontSize:11,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:d.wins/d.total>=0.6?T.green:d.wins/d.total>=0.4?T.gold:T.red}}>{(d.wins/d.total*100).toFixed(0)}%</span>
+                      </div>
+                      <div style={{height:4,background:T.border,borderRadius:2,marginBottom:6,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:(d.wins/d.total*100)+"%",background:d.wins/d.total>=0.6?T.green:d.wins/d.total>=0.4?T.gold:T.red,borderRadius:2,transition:"width .5s"}}/>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:T.textMuted}}>
+                        <span>{d.wins}W / {d.total-d.wins}L — {d.total} trade</span>
+                        <span style={{color:d.pnl>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{d.pnl>=0?"+":""}{d.pnl.toFixed(0)}$</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>}
 
           {/* ═══ GOALS ═══ */}
+          {tradeView==="calendar"&&<div style={{animation:"fadeUp .4s ease-out"}}>
+            <div style={{marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{fontSize:20,fontWeight:700,color:T.text}}>📅 Trade Takvimi</div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <button onClick={()=>setCalendarMonth(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1})}
+                  style={{width:32,height:32,borderRadius:8,border:`1px solid ${T.border}`,background:T.bgCard,color:T.text,cursor:"pointer",fontSize:14}}>‹</button>
+                <span style={{fontSize:14,fontWeight:700,color:T.text,minWidth:120,textAlign:"center"}}>
+                  {["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"][calendarMonth.m]} {calendarMonth.y}
+                </span>
+                <button onClick={()=>setCalendarMonth(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1})}
+                  style={{width:32,height:32,borderRadius:8,border:`1px solid ${T.border}`,background:T.bgCard,color:T.text,cursor:"pointer",fontSize:14}}>›</button>
+              </div>
+            </div>
+
+            {/* Gün başlıkları */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4}}>
+              {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map(d=>(
+                <div key={d} style={{fontSize:10,fontWeight:700,color:T.textMuted,textAlign:"center",padding:"6px 0",textTransform:"uppercase",letterSpacing:.5}}>{d}</div>
+              ))}
+            </div>
+
+            {/* Takvim grid */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+              {calCells.map((day,ci)=>{
+                const dateStr=day?`${calY}-${String(calM+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`:"";
+                const dayTrades=day?trades.filter(t=>(t.entryDate||"").startsWith(dateStr)):[];
+                const dayPnl=dayTrades.filter(t=>t.status==="Kapali").reduce((s,t)=>s+calcPnl(t),0);
+                const openCnt=dayTrades.filter(t=>t.status==="Acik").length;
+                const closedCnt=dayTrades.filter(t=>t.status==="Kapali").length;
+                const isToday=day&&new Date().toISOString().startsWith(dateStr);
+                const hasWin=dayPnl>0;
+                const hasTrades=dayTrades.length>0;
+                return !day
+                  ? <div key={ci} style={{height:90}}/>
+                  : <div key={ci} style={{
+                      height:90,padding:"6px 8px",borderRadius:10,
+                      border:`1px solid ${isToday?T.accent:hasTrades?(hasWin?T.green:dayPnl<0?T.red:T.border):T.border}`,
+                      background:hasTrades?(hasWin?"rgba(34,197,94,.06)":dayPnl<0?"rgba(239,68,68,.06)":T.bgCard):T.bgCard,
+                      transition:"all .15s",cursor:hasTrades?"pointer":"default",
+                      boxShadow:isToday?`0 0 0 2px ${T.accent}44`:"none"}}>
+                    <div style={{fontSize:11,fontWeight:isToday?800:600,color:isToday?T.accent:T.textSecondary,marginBottom:4}}>{day}</div>
+                    {hasTrades&&<div style={{display:"flex",flexDirection:"column",gap:2}}>
+                      {closedCnt>0&&<div style={{fontSize:10,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:hasWin?T.green:T.red}}>{dayPnl>=0?"+":""}{dayPnl.toFixed(0)}$</div>}
+                      <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+                        {closedCnt>0&&<span style={{fontSize:9,padding:"1px 4px",borderRadius:3,background:hasWin?"rgba(34,197,94,.12)":"rgba(239,68,68,.12)",color:hasWin?T.green:T.red,fontWeight:700}}>{closedCnt} kap.</span>}
+                        {openCnt>0&&<span style={{fontSize:9,padding:"1px 4px",borderRadius:3,background:"rgba(234,179,8,.12)",color:T.gold,fontWeight:700}}>{openCnt} açık</span>}
+                      </div>
+                    </div>}
+                  </div>;
+              })}
+            </div>
+
+            {/* Ay özeti */}
+            {calMonthTrades.length>0&&(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginTop:14}}>
+                {[
+                  {l:"Ay K/Z",v:(calMonthPnl>=0?"+":"")+calMonthPnl.toFixed(0)+"$",c:calMonthPnl>=0?T.green:T.red},
+                  {l:"Trade Sayısı",v:String(calMonthTrades.length),c:T.text},
+                  {l:"Kazanma Oranı",v:calMonthClosed>0?(calMonthWins/calMonthClosed*100).toFixed(0)+"%":"—",c:T.accent},
+                  {l:"Trade Günleri",v:String(calTradeDays),c:T.gold},
+                ].map((k,i)=>(
+                  <div key={i} style={{...st.card,padding:14,textAlign:"center"}}>
+                    <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>{k.l}</div>
+                    <div style={{fontSize:18,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:k.c}}>{k.v}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>}
+
           {tradeView==="notes"&&<div style={{animation:"fadeUp .4s ease-out"}}>
             <div style={{marginBottom:20}}>
               <div style={{fontSize:20,fontWeight:700,color:T.text,marginBottom:4}}>📝 Trade Notları & Hatalar</div>
