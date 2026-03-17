@@ -2089,7 +2089,7 @@ export default function CryptoPortfolio() {
               <div style={{fontSize:13,color:T.textMuted}}>{trades.length} trade • Toplam K/Z <span style={{color:totalPnl>=0?T.green:T.red,fontWeight:600}}>${totalPnl.toFixed(2)}</span></div>
             </div>
             <div style={{display:"flex",gap:8}}>
-              {[{v:"list",l:"Geçmiş",ic:"☰"},{v:"add",l:"Yeni Trade",ic:"+"},{v:"analytics",l:"Analitik & Takvim",ic:"📊"},{v:"notes",l:"Notlar",ic:"📝"}].map(v=>
+              {[{v:"list",l:"Aktif İşlemler",ic:"⚡"},{v:"add",l:"Yeni Trade",ic:"+"},{v:"analytics",l:"Analitik & Takvim",ic:"📊"},{v:"notes",l:"Notlar",ic:"📝"}].map(v=>
                 <button key={v.v} onClick={()=>{setTradeView(v.v);if(v.v==="add"){resetNewTrade();setEditTrade(null);}}} style={{padding:"8px 16px",background:tradeView===v.v?"linear-gradient(135deg,#9333EA,#D4A017)":T.bgCard,border:`1px solid ${tradeView===v.v?T.accent+"44":T.border}`,color:tradeView===v.v?"#fff":T.textSecondary,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:4}}>{v.ic} {v.l}</button>
               )}
             </div>
@@ -2099,14 +2099,10 @@ export default function CryptoPortfolio() {
           {tradeView==="list"&&<>
             {/* Kasa & Filtreler */}
             <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
-              <div style={{display:"flex",alignItems:"center",gap:6,background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:8,padding:"6px 12px"}}>
-                <span style={{fontSize:11,color:T.textMuted}}>Kasa:</span>
-                <input value={tradeKasa} onChange={e=>setTradeKasa(parseFloat(e.target.value)||0)} style={{width:80,background:"transparent",border:"none",color:T.gold,fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",outline:"none"}} />
-                <span style={{fontSize:11,color:T.textMuted}}>USDT</span>
-              </div>
+
               <input value={tradeSearch} onChange={e=>setTradeSearch(e.target.value)} placeholder="Sembol, not, etiket ara..." style={{flex:1,minWidth:150,padding:"8px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'Inter',sans-serif"}} />
               <div style={{display:"flex",gap:4}}>
-                {[{f:"all",l:"Tümü"},{f:"open",l:"Açık"},{f:"closed",l:"Kapalı"},{f:"win",l:"Kazanç"},{f:"loss",l:"Kayıp"}].map(f=>
+                {[{f:"all",l:"Tümü"},{f:"closed",l:"Tamamlanan"},{f:"win",l:"Kazanç"},{f:"loss",l:"Kayıp"}].map(f=>
                   <button key={f.f} onClick={()=>setTradeFilter(f.f)} style={{padding:"6px 10px",background:tradeFilter===f.f?T.accentGlow:"transparent",border:`1px solid ${tradeFilter===f.f?T.accent+"33":"transparent"}`,color:tradeFilter===f.f?T.accent:T.textMuted,fontSize:11,fontWeight:600,cursor:"pointer",borderRadius:6,fontFamily:"'Inter',sans-serif"}}>{f.l}</button>
                 )}
               </div>
