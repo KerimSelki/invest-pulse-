@@ -243,6 +243,18 @@ const CoinPicker = ({ value, onChange, prices, savedKey, knownCoins, fmpStocks }
         </div>
       )}
     </div>
+
+    {/* 🔍 Lightbox */}
+    {lightboxSrc&&(
+      <div onClick={()=>setLightboxSrc("")}
+        style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"zoom-out",animation:"fadeUp .15s ease-out"}}>
+        <img src={lightboxSrc} alt=""
+          style={{maxWidth:"95vw",maxHeight:"93vh",objectFit:"contain",borderRadius:12,boxShadow:"0 20px 80px rgba(0,0,0,.8)",animation:"fadeUp .2s ease-out"}}
+          onClick={e=>e.stopPropagation()}/>
+        <button onClick={()=>setLightboxSrc("")}
+          style={{position:"fixed",top:20,right:24,width:38,height:38,borderRadius:10,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.2)",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}}>✕</button>
+      </div>
+    )}
   );
 };
 
@@ -655,6 +667,7 @@ export default function CryptoPortfolio() {
   const [tradeR, setTradeR] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_r") || "100"); } catch(e) { return 100; } });
   const [entryCount, setEntryCount] = useState(3);
   const [screenshotPasteActive, setScreenshotPasteActive] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState("");
   const [tradeTemplates, setTradeTemplates] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_trade_templates") || "[]"); } catch(e) { return []; } });
   const [calendarMonth, setCalendarMonth] = useState(() => { const d=new Date(); return {y:d.getFullYear(),m:d.getMonth()}; });
   const [goals, setGoals] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_goals") || "[]"); } catch(e) { return []; } });
@@ -2673,13 +2686,12 @@ export default function CryptoPortfolio() {
                 </div>
                 {newTrade.screenshot
                   ? <div style={{position:"relative"}}>
-                      <img src={newTrade.screenshot} alt="trade" style={{width:"100%",maxHeight:400,objectFit:"contain",borderRadius:10,border:`1px solid ${T.border}`,background:T.bgCardSolid}}/>
-                      <div style={{position:"absolute",top:8,right:8,display:"flex",gap:6}}>
-                        <button onClick={()=>window.open(newTrade.screenshot,"_blank")}
-                          style={{padding:"5px 10px",borderRadius:6,background:"rgba(0,0,0,.6)",border:"none",color:"#fff",fontSize:10,cursor:"pointer",fontWeight:600}}>🔍 Büyüt</button>
-                        <button onClick={()=>setNewTrade(p=>({...p,screenshot:""}))}
-                          style={{width:28,height:28,borderRadius:6,background:"rgba(239,68,68,.85)",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-                      </div>
+                      <img src={newTrade.screenshot} alt="trade"
+                        onClick={()=>setLightboxSrc(newTrade.screenshot)}
+                        style={{width:"100%",maxHeight:400,objectFit:"contain",borderRadius:10,border:`1px solid ${T.border}`,background:T.bgCardSolid,cursor:"zoom-in",transition:"opacity .2s"}}
+                        onMouseEnter={e=>e.target.style.opacity=".85"} onMouseLeave={e=>e.target.style.opacity="1"}/>
+                      <button onClick={()=>setNewTrade(p=>({...p,screenshot:""}))}
+                        style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:6,background:"rgba(239,68,68,.85)",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
                     </div>
                   : <div
                       tabIndex={0}
@@ -2922,9 +2934,12 @@ export default function CryptoPortfolio() {
                 {trades.filter(t=>t.notes||t.mistakes||t.lessons).map((t,i)=>(
                     <div key={t.id||i} style={{...st.card,padding:0,overflow:"hidden",borderLeft:`3px solid ${t.status==="Kapali"?(calcPnl(t)>0?T.green:T.red):T.gold}`}}>
                       {t.screenshot&&<div style={{height:180,overflow:"hidden",borderBottom:`1px solid ${T.border}`,position:"relative",cursor:"pointer"}} onClick={()=>window.open(t.screenshot,"_blank")}>
-                        <img src={t.screenshot} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                        <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 60%,rgba(0,0,0,.4))"}}/>
-                        <div style={{position:"absolute",bottom:8,right:8,fontSize:10,padding:"3px 8px",borderRadius:4,background:"rgba(0,0,0,.6)",color:"#fff"}}>🔍 Büyüt</div>
+                        <img src={t.screenshot} alt=""
+                          onClick={()=>setLightboxSrc(t.screenshot)}
+                          style={{width:"100%",height:"100%",objectFit:"cover",cursor:"zoom-in",transition:"transform .2s"}}
+                          onMouseEnter={e=>e.target.style.transform="scale(1.02)"} onMouseLeave={e=>e.target.style.transform="scale(1)"}/>
+                        <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 60%,rgba(0,0,0,.35))",pointerEvents:"none"}}/>
+                        <div style={{position:"absolute",bottom:8,right:8,fontSize:10,padding:"3px 8px",borderRadius:4,background:"rgba(0,0,0,.6)",color:"#fff",pointerEvents:"none"}}>🔍 Büyüt</div>
                       </div>}
                       <div style={{padding:"12px 16px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                         <div style={{display:"flex",alignItems:"center",gap:8}}>
