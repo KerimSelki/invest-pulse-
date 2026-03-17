@@ -704,7 +704,7 @@ export default function CryptoPortfolio() {
   const deleteTrade = (idx) => { setTrades(prev=>prev.filter((_,i)=>i!==idx)); };
 
   const filteredTrades = trades.filter(t => {
-    if (tradeFilter==="open" && t.status!=="Acik") return false;
+    if (tradeFilter==="all" && t.status!=="Acik") return false;
     if (tradeFilter==="closed" && t.status!=="Kapali") return false;
     if (tradeFilter==="win" && (t.status!=="Kapali" || calcPnl(t)<=0)) return false;
     if (tradeFilter==="loss" && (t.status!=="Kapali" || calcPnl(t)>=0)) return false;
@@ -2102,7 +2102,7 @@ export default function CryptoPortfolio() {
 
               <input value={tradeSearch} onChange={e=>setTradeSearch(e.target.value)} placeholder="Sembol, not, etiket ara..." style={{flex:1,minWidth:150,padding:"8px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'Inter',sans-serif"}} />
               <div style={{display:"flex",gap:4}}>
-                {[{f:"all",l:"Tümü"},{f:"closed",l:"Tamamlanan"},{f:"win",l:"Kazanç"},{f:"loss",l:"Kayıp"}].map(f=>
+                {[{f:"all",l:"Aktif"},{f:"closed",l:"Tarihe Geçti"},{f:"win",l:"Kazanç"},{f:"loss",l:"Kayıp"}].map(f=>
                   <button key={f.f} onClick={()=>setTradeFilter(f.f)} style={{padding:"6px 10px",background:tradeFilter===f.f?T.accentGlow:"transparent",border:`1px solid ${tradeFilter===f.f?T.accent+"33":"transparent"}`,color:tradeFilter===f.f?T.accent:T.textMuted,fontSize:11,fontWeight:600,cursor:"pointer",borderRadius:6,fontFamily:"'Inter',sans-serif"}}>{f.l}</button>
                 )}
               </div>
