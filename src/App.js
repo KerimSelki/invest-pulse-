@@ -671,6 +671,15 @@ export default function CryptoPortfolio() {
   const avgLoss = lossTrades.length>0?Math.abs(lossTrades.reduce((s,t)=>s+calcPnl(t),0)/lossTrades.length):0;
   const profitFactor = avgLoss>0?(avgWin*winTrades.length)/(avgLoss*lossTrades.length):0;
   const maxDrawdown = (() => { let peak=0,dd=0,maxDd=0; closedTrades.sort((a,b)=>new Date(a.exitDate)-new Date(b.exitDate)).forEach(t=>{const eq=peak+calcPnl(t);if(eq>peak)peak=eq;dd=peak-eq;if(dd>maxDd)maxDd=dd;}); return maxDd; })();
+  const tradeVolume = trades.reduce((s,t) => s + parseFloat(t.amount||0), 0);
+  const openTrades = trades.filter(t => t.status==="Acik");
+  const avgDuration = closedTrades.length>0 ? Math.round(closedTrades.reduce((s,t)=>{
+    return s + (t.exitDate&&t.entryDate ? (new Date(t.exitDate)-new Date(t.entryDate))/3600000 : 0);
+  },0)/closedTrades.length) : 0;
+  const tradesByMarket = trades.reduce((acc,t)=>{ acc[t.market||"Kripto"]=(acc[t.market||"Kripto"]||0)+1; return acc; },{});
+  const longCount = trades.filter(t=>t.direction==="Long").length;
+  const shortCount = trades.filter(t=>t.direction==="Short").length;
+  const monthlyPnlData = (()=>{ const mp={}; closedTrades.forEach(t=>{ const m=new Date(t.exitDate||t.entryDate).toLocaleDateString("tr-TR",{month:"short",year:"2-digit"}); mp[m]=(mp[m]||0)+calcPnl(t); }); return Object.entries(mp).map(([month,pnl])=>({month,pnl:+pnl.toFixed(2)})); })();
 
   const resetNewTrade = () => setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
 
