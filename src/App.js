@@ -653,6 +653,7 @@ export default function CryptoPortfolio() {
   const [tradeSearch, setTradeSearch] = useState("");
   const [tradeKasa, setTradeKasa] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_kasa") || "5000"); } catch(e) { return 5000; } });
   const [tradeR, setTradeR] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_r") || "100"); } catch(e) { return 100; } });
+  const [entryCount, setEntryCount] = useState(3);
   const [goals, setGoals] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_goals") || "[]"); } catch(e) { return []; } });
   const [editTrade, setEditTrade] = useState(null);
   const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",rAmount:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
@@ -2197,7 +2198,14 @@ export default function CryptoPortfolio() {
               {/* R Hesabı — Risk Yönetimi */}
               <div style={{...st.card,borderLeft:`3px solid ${T.gold}`,background:`linear-gradient(135deg,rgba(212,160,23,.05),transparent)`}}>
                 <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <span>🎲 R Hesabı — Pozisyon Boyutu</span>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:34,height:34,borderRadius:10,background:`linear-gradient(135deg,${T.gold},#B8860B)`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 12px rgba(212,160,23,.35)`}}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B0D15" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                      </svg>
+                    </div>
+                    <span>R Hesabı — Pozisyon Boyutu</span>
+                  </div>
                   <span style={{fontSize:10,color:T.textMuted,fontWeight:400}}>Entry + SL girince otomatik hesaplanır</span>
                 </div>
 
@@ -2274,13 +2282,87 @@ export default function CryptoPortfolio() {
                         <span>=</span>
                         <span style={{color:T.gold,fontWeight:800}}>${(tradeR/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*parseFloat(newTrade.entryPrice)).toFixed(2)}</span>
                       </div>
-                      <button onClick={()=>setNewTrade(p=>({...p,
-                        amount:String((tradeR/Math.abs(parseFloat(p.entryPrice)-parseFloat(p.stopLoss))*parseFloat(p.entryPrice)).toFixed(0)),
-                        rAmount:String(tradeR)
-                      }))}
-                        style={{marginTop:10,width:"100%",padding:"10px",background:`linear-gradient(135deg,${T.gold},#B8860B)`,border:"none",borderRadius:8,color:"#0B0D15",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"'Inter',sans-serif",letterSpacing:".3px",boxShadow:`0 4px 16px rgba(212,160,23,.3)`}}>
-                        ↑ Bu Pozisyon Boyutunu Uygula
-                      </button>
+                      {/* Piramit Öneri */}
+                      <div style={{marginTop:12,padding:"14px",background:T.bgInput,borderRadius:10,border:`1px solid ${T.border}`}}>
+                        {/* Başlık + Entry sayısı seçimi */}
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                          <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.5}}>📐 Piramit Dağılımı</div>
+                          <div style={{display:"flex",gap:4,background:T.bg,borderRadius:8,padding:3,border:`1px solid ${T.border}`}}>
+                            {[1,2,3].map(n=>(
+                              <button key={n} onClick={()=>setEntryCount(n)}
+                                style={{width:32,height:28,borderRadius:6,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all .15s",
+                                  background:entryCount===n?T.gold:"transparent",
+                                  color:entryCount===n?"#0B0D15":T.textMuted,
+                                  boxShadow:entryCount===n?`0 2px 8px rgba(212,160,23,.3)`:"none"}}>
+                                {n}
+                              </button>
+                            ))}
+                            <span style={{fontSize:10,color:T.textMuted,padding:"0 6px",display:"flex",alignItems:"center"}}>entry</span>
+                          </div>
+                        </div>
+
+                        {/* Görsel bar */}
+                        <div style={{display:"flex",gap:8,alignItems:"flex-end",marginBottom:12,height:52,paddingBottom:20,position:"relative"}}>
+                          {(entryCount===1?[[100,T.gold]]
+                            :entryCount===2?[[40,"#3b82f6"],[60,"#8B5CF6"]]
+                            :[[20,"#3b82f6"],[30,"#6366f1"],[50,"#8B5CF6"]]
+                          ).map(([pct,clr],i)=>(
+                            <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                              <div style={{fontSize:10,fontWeight:700,color:clr}}>%{pct}</div>
+                              <div style={{width:"100%",borderRadius:"4px 4px 0 0",background:clr,
+                                height:(pct/100)*36+"px",
+                                boxShadow:`0 0 8px ${clr}44`,
+                                transition:"height .3s ease"}}/>
+                              <div style={{position:"absolute",bottom:0,fontSize:9,color:T.textMuted,fontWeight:600}}>E{i+1}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Açıklama */}
+                        <div style={{fontSize:11,color:T.textMuted,marginBottom:12,padding:"7px 10px",background:"rgba(212,160,23,.05)",borderRadius:7,border:`1px solid ${T.gold}22`,lineHeight:1.7}}>
+                          {entryCount===1
+                            ? <><span style={{color:T.gold,fontWeight:700}}>Tek giriş.</span> Tüm pozisyonu tek seferde aç. Sinyal kuvvetliyse ideal.</>
+                            : entryCount===2
+                            ? <><span style={{color:T.gold,fontWeight:700}}>2 kademeli giriş: %40 + %60.</span> Önce küçük test et, onay gelince büyü.</>
+                            : <><span style={{color:T.gold,fontWeight:700}}>3 kademeli giriş: %20 + %30 + %50.</span> En temkinli yaklaşım. Her kademe doğrulanınca büyü.</>
+                          }
+                        </div>
+
+                        {/* Dolar miktarları */}
+                        <div style={{display:"grid",gap:6,marginBottom:12,gridTemplateColumns:entryCount===1?"1fr":entryCount===2?"1fr 1fr":"1fr 1fr 1fr"}}>
+                          {(entryCount===1?[[100,T.gold]]
+                            :entryCount===2?[[40,"#3b82f6"],[60,"#8B5CF6"]]
+                            :[[20,"#3b82f6"],[30,"#6366f1"],[50,"#8B5CF6"]]
+                          ).map(([pct,clr],i)=>{
+                            const totalPos=tradeR/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*parseFloat(newTrade.entryPrice);
+                            const amt=(totalPos*pct/100).toFixed(0);
+                            return (
+                              <div key={i} style={{padding:"10px",background:T.bgInput,borderRadius:8,border:`1px solid ${clr}33`,textAlign:"center"}}>
+                                <div style={{fontSize:10,color:clr,marginBottom:4,fontWeight:700}}>Entry {i+1}</div>
+                                <div style={{fontSize:16,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:T.gold}}>${amt}</div>
+                                <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>%{pct}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Uygula butonu */}
+                        <button onClick={()=>{
+                          const totalPos=tradeR/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*parseFloat(newTrade.entryPrice);
+                          const pcts=entryCount===1?[100]:entryCount===2?[40,60]:[20,30,50];
+                          setNewTrade(p=>({...p,
+                            amount:String(totalPos.toFixed(0)),
+                            entry1Amount:String((totalPos*pcts[0]/100).toFixed(0)),
+                            entry2Amount:pcts[1]?String((totalPos*pcts[1]/100).toFixed(0)):"",
+                            entry3Amount:pcts[2]?String((totalPos*pcts[2]/100).toFixed(0)):"",
+                            rAmount:String(tradeR)
+                          }));
+                        }} style={{width:"100%",padding:"11px",background:`linear-gradient(135deg,${T.gold},#B8860B)`,border:"none",borderRadius:8,color:"#0B0D15",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:`0 4px 16px rgba(212,160,23,.3)`,transition:"transform .15s"}}
+                        onMouseEnter={e=>e.currentTarget.style.transform="scale(1.01)"}
+                        onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+                          ↑ {entryCount} Entry ile Uygula
+                        </button>
+                      </div>
                     </div>
                   : <div style={{padding:"16px",background:T.bgInput,borderRadius:10,border:`1px solid ${T.border}`,textAlign:"center",color:T.textMuted,fontSize:13}}>
                       <div style={{fontSize:24,marginBottom:8}}>⬆</div>
