@@ -2318,10 +2318,45 @@ export default function CryptoPortfolio() {
               {/* Çıkış Fiyatı + K/Z */}
               <div style={{...st.card,borderLeft:`3px solid #8B5CF6`}}>
                 <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:14,display:"flex",alignItems:"center",gap:8}}>🚪 Çıkış</div>
+                {/* Otomatik Doldur Butonları */}
+                <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+                  {/* TP Ortalaması */}
+                  {(newTrade.tp1||newTrade.tp2||newTrade.tp3)&&(
+                    <button onClick={()=>{
+                      const tps=[parseFloat(newTrade.tp1||0),parseFloat(newTrade.tp2||0),parseFloat(newTrade.tp3||0)].filter(v=>v>0);
+                      if(tps.length>0){
+                        const tpAmts=[parseFloat(newTrade.tp1Amount||0),parseFloat(newTrade.tp2Amount||0),parseFloat(newTrade.tp3Amount||0)];
+                        const validAmts=tps.map((_,i)=>tpAmts[i]).filter((a,i)=>tps[i]>0&&a>0);
+                        const avgPrice = validAmts.length>0&&validAmts.length===tps.length
+                          ? tps.reduce((s,p,i)=>s+p*tpAmts[i],0)/validAmts.reduce((s,a)=>s+a,0)
+                          : tps.reduce((s,p)=>s+p,0)/tps.length;
+                        setNewTrade(p=>({...p,exitPrice:avgPrice.toFixed(avgPrice<1?6:4),status:"Kapali"}));
+                      }
+                    }} style={{padding:"6px 14px",background:"rgba(34,197,94,.1)",border:"1px solid #22C55E44",borderRadius:7,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:5,transition:"all .15s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.background="rgba(34,197,94,.18)";}}
+                    onMouseLeave={e=>{e.currentTarget.style.background="rgba(34,197,94,.1)";}}>
+                      ✓ TP Ortalaması ({[newTrade.tp1,newTrade.tp2,newTrade.tp3].filter(v=>parseFloat(v||0)>0).length} TP)
+                    </button>
+                  )}
+                  {/* TP1 direkt */}
+                  {newTrade.tp1&&parseFloat(newTrade.tp1)>0&&(
+                    <button onClick={()=>setNewTrade(p=>({...p,exitPrice:parseFloat(p.tp1).toFixed(parseFloat(p.tp1)<1?6:4),status:"Kapali"}))}
+                      style={{padding:"6px 14px",background:"rgba(16,185,129,.08)",border:"1px solid #10B98133",borderRadius:7,color:"#10B981",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                      TP1: ${parseFloat(newTrade.tp1).toFixed(2)}
+                    </button>
+                  )}
+                  {/* Stop oldu */}
+                  {newTrade.stopLoss&&parseFloat(newTrade.stopLoss)>0&&(
+                    <button onClick={()=>setNewTrade(p=>({...p,exitPrice:parseFloat(p.stopLoss).toFixed(parseFloat(p.stopLoss)<1?6:4),status:"Kapali"}))}
+                      style={{padding:"6px 14px",background:`rgba(239,68,68,.08)`,border:`1px solid ${T.red}33`,borderRadius:7,color:T.red,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:5}}>
+                      🛑 Stop: ${parseFloat(newTrade.stopLoss).toFixed(2)}
+                    </button>
+                  )}
+                </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                   <div>
-                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Çıkış Fiyatı</div>
-                    <input type="number" value={newTrade.exitPrice} onChange={e=>setNewTrade(p=>({...p,exitPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Çıkış Fiyatı <span style={{fontSize:10,color:T.textMuted}}>(veya yukarıdan seç)</span></div>
+                    <input type="number" value={newTrade.exitPrice} onChange={e=>setNewTrade(p=>({...p,exitPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${newTrade.exitPrice?T.accent+"44":T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",transition:"border-color .2s"}}/>
                   </div>
                   {newTrade.exitPrice&&newTrade.entryPrice&&parseFloat(newTrade.entryPrice)>0&&
                     <div style={{padding:"10px 14px",background:(newTrade.direction==="Long"?parseFloat(newTrade.exitPrice)>=parseFloat(newTrade.entryPrice):parseFloat(newTrade.exitPrice)<=parseFloat(newTrade.entryPrice))?"rgba(34,197,94,.08)":"rgba(239,68,68,.08)",border:`1px solid ${(newTrade.direction==="Long"?parseFloat(newTrade.exitPrice)>=parseFloat(newTrade.entryPrice):parseFloat(newTrade.exitPrice)<=parseFloat(newTrade.entryPrice))?"#22C55E":"#EF4444"}33`,borderRadius:8,display:"flex",flexDirection:"column",justifyContent:"center"}}>
