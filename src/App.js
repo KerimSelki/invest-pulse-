@@ -2102,7 +2102,7 @@ export default function CryptoPortfolio() {
 
               <input value={tradeSearch} onChange={e=>setTradeSearch(e.target.value)} placeholder="Sembol, not, etiket ara..." style={{flex:1,minWidth:150,padding:"8px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'Inter',sans-serif"}} />
               <div style={{display:"flex",gap:4}}>
-                {[{f:"all",l:"Aktif"},{f:"closed",l:"Tarihe Geçti"},{f:"win",l:"Kazanç"},{f:"loss",l:"Kayıp"}].map(f=>
+                {[{f:"all",l:"Aktif"},{f:"closed",l:"Tamamlanan"},{f:"win",l:"Kazanç"},{f:"loss",l:"Kayıp"}].map(f=>
                   <button key={f.f} onClick={()=>setTradeFilter(f.f)} style={{padding:"6px 10px",background:tradeFilter===f.f?T.accentGlow:"transparent",border:`1px solid ${tradeFilter===f.f?T.accent+"33":"transparent"}`,color:tradeFilter===f.f?T.accent:T.textMuted,fontSize:11,fontWeight:600,cursor:"pointer",borderRadius:6,fontFamily:"'Inter',sans-serif"}}>{f.l}</button>
                 )}
               </div>
@@ -2221,8 +2221,8 @@ export default function CryptoPortfolio() {
                       </button>
                     </div>
                   </div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Durum</div><select value={newTrade.status} onChange={e=>setNewTrade(p=>({...p,status:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="Acik">Açık</option><option value="Kapali">Kapalı</option></select></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Kaldıraç</div><select value={newTrade.leverage} onChange={e=>setNewTrade(p=>({...p,leverage:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}>{["1x","2x","3x","5x","10x","20x","25x","50x","75x","100x","125x"].map(l=><option key={l}>{l}</option>)}</select></div>
+
+
                 </div>
               </div>
 
