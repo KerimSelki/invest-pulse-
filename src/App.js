@@ -3404,6 +3404,3 @@ export default function CryptoPortfolio() {
     </div>
   );
 }
-
-
-export default App
