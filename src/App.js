@@ -2063,33 +2063,6 @@ export default function CryptoPortfolio() {
             <div style={st.card}><div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Kar / Zarar</div><div style={{fontSize:20,fontWeight:700,fontFamily:"'Inter',monospace",color:allTotPnl>=0?T.green:T.red}}>{isLoading?<span style={{display:"inline-block",width:100,height:20,background:T.border,borderRadius:6,animation:"skeletonPulse 1.5s infinite"}}/>:<>{allTotPnl>=0?"+":""}{fmt(allTotPnl)}</>}</div>{!isLoading&&<div style={{fontSize:12,marginTop:2,fontFamily:"'JetBrains Mono',monospace",color:allTotPnl>=0?T.green:T.red}}>{fPct(allTotPnlPct)}</div>}</div>
           </div>
 
-          {/* Dağılım + Tüm Varlıklar */}
-          <div style={{display:"grid",gridTemplateColumns:allPData.length>0?"260px 1fr":"1fr",gap:18,marginBottom:20}}>
-            {allPData.length>0&&<div style={st.card}>
-              <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Dağılım</h3>
-              <ResponsiveContainer width="100%" height={200}><PieChart><Pie data={allPieData.slice(0,12)} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">{allPieData.slice(0,12).map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip formatter={v=>[fmt(v),""]} contentStyle={st.tt}/></PieChart></ResponsiveContainer>
-              <div style={{marginTop:8,maxHeight:180,overflowY:"auto"}}>{allPieData.map((item,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${T.bgCardSolid}`}}><span style={{width:8,height:8,borderRadius:2,background:item.color,flexShrink:0}}/><span style={{flex:1,fontSize:12,color:T.textSecondary}}>{item.name}</span><span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:"#9333EA"}}>{allTotVal>0?((item.value/allTotVal)*100).toFixed(1):0}%</span></div>)}</div>
-            </div>}
-            <div style={st.card}>
-              <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Tüm Varlıklar</h3>
-              <div style={{overflowX:"auto"}}>
-                {allPData.length===0?<div style={{textAlign:"center",padding:40,color:T.textMuted}}>Portföylere varlık ekleyin</div>:
-                <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"auto"}}><thead><tr>{["Varlık","Fiyat","24s","Değer","Ağırlık","K/Z"].map((h,i)=><th key={h} style={{...st.th,textAlign:i===0?"left":"right"}}>{h}</th>)}</tr></thead><tbody>
-                {allPData.map((item,i)=>{
-                  const pct=allTotVal>0?(item.currentValue/allTotVal*100):0;const mc=getMarketColor(getMarketType(item.coinId));
-                  return(<tr key={item.coinId}>
-                    <td style={st.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,fontFamily:"'Inter',monospace",background:mc+"18",color:mc}}>{item.coin?.symbol?.charAt(0)||"?"}</div><div><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:12}}>{item.coin?.name}</span><span style={{fontSize:8,padding:"1px 4px",borderRadius:2,background:mc+"15",color:mc,fontWeight:700}}>{getMarketLabel(getMarketType(item.coinId))}</span></div><div style={{fontSize:10,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{item.coin?.symbol}</div></div></div></td>
-                    <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{fmt(item.currentPrice,item.currentPrice<1?4:2)}</td>
-                    <td style={{...st.td,textAlign:"right",color:item.change24h>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{fPct(item.change24h)}</td>
-                    <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:12}}>{fmt(item.currentValue)}</td>
-                    <td style={{...st.td,textAlign:"right"}}><div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end"}}><div style={{width:36,height:4,background:T.border,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:CLR[i%CLR.length],borderRadius:2}}/></div><span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:"#9333EA",fontWeight:600,minWidth:36,textAlign:"right"}}>{pct.toFixed(1)}%</span></div></td>
-                    <td style={{...st.td,textAlign:"right"}}><span style={{color:item.pnl>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:12}}>{item.pnl>=0?"+":""}{fmt(item.pnl)}</span></td>
-                  </tr>);})}
-                </tbody></table>}
-              </div>
-            </div>
-          </div>
-
           {/* 🔥 En Çok Yükselen & Düşenler */}
           {gainersLosers.length>1&&(
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
@@ -2141,6 +2114,33 @@ export default function CryptoPortfolio() {
               </div>
             </div>
           )}
+
+          {/* Dağılım + Tüm Varlıklar */}
+          <div style={{display:"grid",gridTemplateColumns:allPData.length>0?"260px 1fr":"1fr",gap:18,marginBottom:20}}>
+            {allPData.length>0&&<div style={st.card}>
+              <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Dağılım</h3>
+              <ResponsiveContainer width="100%" height={200}><PieChart><Pie data={allPieData.slice(0,12)} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">{allPieData.slice(0,12).map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip formatter={v=>[fmt(v),""]} contentStyle={st.tt}/></PieChart></ResponsiveContainer>
+              <div style={{marginTop:8,maxHeight:180,overflowY:"auto"}}>{allPieData.map((item,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${T.bgCardSolid}`}}><span style={{width:8,height:8,borderRadius:2,background:item.color,flexShrink:0}}/><span style={{flex:1,fontSize:12,color:T.textSecondary}}>{item.name}</span><span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:"#9333EA"}}>{allTotVal>0?((item.value/allTotVal)*100).toFixed(1):0}%</span></div>)}</div>
+            </div>}
+            <div style={st.card}>
+              <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Tüm Varlıklar</h3>
+              <div style={{overflowX:"auto"}}>
+                {allPData.length===0?<div style={{textAlign:"center",padding:40,color:T.textMuted}}>Portföylere varlık ekleyin</div>:
+                <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"auto"}}><thead><tr>{["Varlık","Fiyat","24s","Değer","Ağırlık","K/Z"].map((h,i)=><th key={h} style={{...st.th,textAlign:i===0?"left":"right"}}>{h}</th>)}</tr></thead><tbody>
+                {allPData.map((item,i)=>{
+                  const pct=allTotVal>0?(item.currentValue/allTotVal*100):0;const mc=getMarketColor(getMarketType(item.coinId));
+                  return(<tr key={item.coinId}>
+                    <td style={st.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,fontFamily:"'Inter',monospace",background:mc+"18",color:mc}}>{item.coin?.symbol?.charAt(0)||"?"}</div><div><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:12}}>{item.coin?.name}</span><span style={{fontSize:8,padding:"1px 4px",borderRadius:2,background:mc+"15",color:mc,fontWeight:700}}>{getMarketLabel(getMarketType(item.coinId))}</span></div><div style={{fontSize:10,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{item.coin?.symbol}</div></div></div></td>
+                    <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{fmt(item.currentPrice,item.currentPrice<1?4:2)}</td>
+                    <td style={{...st.td,textAlign:"right",color:item.change24h>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{fPct(item.change24h)}</td>
+                    <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:12}}>{fmt(item.currentValue)}</td>
+                    <td style={{...st.td,textAlign:"right"}}><div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end"}}><div style={{width:36,height:4,background:T.border,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:CLR[i%CLR.length],borderRadius:2}}/></div><span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:"#9333EA",fontWeight:600,minWidth:36,textAlign:"right"}}>{pct.toFixed(1)}%</span></div></td>
+                    <td style={{...st.td,textAlign:"right"}}><span style={{color:item.pnl>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:12}}>{item.pnl>=0?"+":""}{fmt(item.pnl)}</span></td>
+                  </tr>);})}
+                </tbody></table>}
+              </div>
+            </div>
+          </div>
         </div>}
 
         {/* ═══ REPORTS ═══ */}
