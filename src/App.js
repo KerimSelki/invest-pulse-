@@ -641,6 +641,8 @@ export default function CryptoPortfolio() {
   };
   const [tab, setTab] = useState("overview");
   const [newsFilter, setNewsFilter] = useState("portfolio");
+  const [symResults, setSymResults] = useState([]);
+  const [symOpen, setSymOpen] = useState(false);
   const [newsData, setNewsData] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsLoaded, setNewsLoaded] = useState(false);
@@ -2125,10 +2127,66 @@ export default function CryptoPortfolio() {
               <div style={{...st.card,borderLeft:`3px solid ${T.accent}`}}>
                 <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:14,display:"flex",alignItems:"center",gap:8}}>📈 Trade Bilgileri</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Sembol</div><input value={newTrade.symbol} onChange={e=>setNewTrade(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="BTC/USDT" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'Inter',sans-serif"}} /></div>
+                  <div style={{position:"relative"}}>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Sembol</div>
+                    <input value={newTrade.symbol}
+                      onChange={e=>{
+                        const v=e.target.value.toUpperCase();
+                        setNewTrade(p=>({...p,symbol:v}));
+                        if(v.length>=1){
+                          const ql=v.toLowerCase().replace("/usdt","").replace("/","");
+                          const r=knownCoins.filter(c=>c.symbol.toLowerCase().startsWith(ql)||c.name.toLowerCase().startsWith(ql)).slice(0,6);
+                          setSymResults(r); setSymOpen(r.length>0);
+                        } else { setSymOpen(false); }
+                      }}
+                      onBlur={()=>setTimeout(()=>setSymOpen(false),150)}
+                      placeholder="BTC, ETH, SOL..."
+                      style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${symOpen?T.accent+"66":T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",transition:"border-color .2s"}}/>
+                    {symOpen&&symResults.length>0&&(
+                      <div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,borderRadius:10,zIndex:100,boxShadow:"0 12px 40px rgba(0,0,0,.4)",maxHeight:220,overflowY:"auto"}}>
+                        {symResults.map((coin,si)=>(
+                          <div key={coin.id} onMouseDown={()=>{
+                            setNewTrade(p=>({...p,symbol:coin.symbol+"/USDT"}));
+                            setSymOpen(false);
+                          }} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",cursor:"pointer",borderBottom:`1px solid ${T.border}`,transition:"background .15s"}}
+                          onMouseEnter={e=>e.currentTarget.style.background=T.bgCardSolid+"cc"}
+                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                            <div style={{width:28,height:28,borderRadius:7,background:T.accent+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:T.accent}}>{coin.symbol.charAt(0)}</div>
+                            <div>
+                              <div style={{fontSize:13,fontWeight:600,color:T.text}}>{coin.symbol}</div>
+                              <div style={{fontSize:10,color:T.textMuted}}>{coin.name}</div>
+                            </div>
+                            {prices[coin.id]?.usd>0&&<div style={{marginLeft:"auto",fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:T.textSecondary}}>${prices[coin.id].usd<1?prices[coin.id].usd.toFixed(4):prices[coin.id].usd.toFixed(2)}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Piyasa Türü</div><select value={newTrade.market} onChange={e=>setNewTrade(p=>({...p,market:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Kripto</option><option>Forex</option><option>Hisse</option><option>Emtia</option></select></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Borsa</div><select value={newTrade.exchange} onChange={e=>setNewTrade(p=>({...p,exchange:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Bybit</option><option>OKX</option><option>Dreamcash</option></select></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Yön</div><div style={{display:"flex",gap:6}}>{["Long","Short"].map(d=><button key={d} onClick={()=>setNewTrade(p=>({...p,direction:d}))} style={{flex:1,padding:"10px",background:newTrade.direction===d?(d==="Long"?"#22C55E18":"#EF444418"):T.bgInput,border:`1px solid ${newTrade.direction===d?(d==="Long"?"#22C55E44":"#EF444444"):T.border}`,borderRadius:8,color:newTrade.direction===d?(d==="Long"?"#22C55E":"#EF4444"):T.textMuted,fontSize:13,fontWeight:600,cursor:"pointer"}}>{d}</button>)}</div></div>
+                  <div>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Yön</div>
+                    <div style={{display:"flex",gap:0,background:T.bgInput,borderRadius:10,padding:3,border:`1px solid ${T.border}`}}>
+                      <button onClick={()=>setNewTrade(p=>({...p,direction:"Long"}))}
+                        style={{flex:1,padding:"11px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",
+                          transition:"all .25s cubic-bezier(.22,1,.36,1)",
+                          background:newTrade.direction==="Long"?"linear-gradient(135deg,#22C55E,#16A34A)":"transparent",
+                          color:newTrade.direction==="Long"?"#fff":T.textMuted,
+                          boxShadow:newTrade.direction==="Long"?"0 4px 16px rgba(34,197,94,.3)":"none",
+                          transform:newTrade.direction==="Long"?"scale(1.02)":"scale(1)"}}>
+                        ▲ Long
+                      </button>
+                      <button onClick={()=>setNewTrade(p=>({...p,direction:"Short"}))}
+                        style={{flex:1,padding:"11px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",
+                          transition:"all .25s cubic-bezier(.22,1,.36,1)",
+                          background:newTrade.direction==="Short"?"linear-gradient(135deg,#EF4444,#DC2626)":"transparent",
+                          color:newTrade.direction==="Short"?"#fff":T.textMuted,
+                          boxShadow:newTrade.direction==="Short"?"0 4px 16px rgba(239,68,68,.3)":"none",
+                          transform:newTrade.direction==="Short"?"scale(1.02)":"scale(1)"}}>
+                        ▼ Short
+                      </button>
+                    </div>
+                  </div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Durum</div><select value={newTrade.status} onChange={e=>setNewTrade(p=>({...p,status:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="Acik">Açık</option><option value="Kapali">Kapalı</option></select></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Kaldıraç</div><select value={newTrade.leverage} onChange={e=>setNewTrade(p=>({...p,leverage:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}>{["1x","2x","3x","5x","10x","20x","25x","50x","75x","100x","125x"].map(l=><option key={l}>{l}</option>)}</select></div>
                 </div>
@@ -2234,37 +2292,99 @@ export default function CryptoPortfolio() {
                 </div>
               </div>
 
-              {/* Tarihler */}
-              <div style={{...st.card,borderLeft:`3px solid #8B5CF6`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>📅 Tarihler</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Giriş Tarihi</div><input type="datetime-local" value={newTrade.entryDate} onChange={e=>setNewTrade(p=>({...p,entryDate:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Çıkış Tarihi</div><input type="datetime-local" value={newTrade.exitDate} onChange={e=>setNewTrade(p=>({...p,exitDate:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}} /></div>
+              {/* Tarihler + Notlar + Puanlama — BİRLEŞİK KART */}
+              <div style={{...st.card,borderLeft:"3px solid #8B5CF6",padding:0,overflow:"hidden"}}>
+                {/* Sekme başlıkları */}
+                <div style={{display:"flex",borderBottom:`1px solid ${T.border}`,background:T.bgCardSolid+"aa"}}>
+                  {[["dates","📅 Tarihler"],["notes","📝 Notlar"],["score","⭐ Puanlama"]].map(([k,l])=>(
+                    <button key={k} onClick={()=>setNewTrade(p=>({...p,_tab:k}))}
+                      style={{flex:1,padding:"12px 8px",border:"none",background:"transparent",fontSize:12,fontWeight:newTrade._tab===k||(!newTrade._tab&&k==="dates")?700:500,
+                        color:newTrade._tab===k||(!newTrade._tab&&k==="dates")?T.accent:T.textMuted,
+                        cursor:"pointer",borderBottom:`2px solid ${newTrade._tab===k||(!newTrade._tab&&k==="dates")?T.accent:"transparent"}`,
+                        transition:"all .2s",fontFamily:"'Inter',sans-serif"}}>
+                      {l}
+                    </button>
+                  ))}
                 </div>
-              </div>
-
-              {/* Notlar & Strateji */}
-              <div style={{...st.card,borderLeft:`3px solid #F59E0B`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>📝 Notlar & Strateji</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Strateji</div><select value={newTrade.strategy} onChange={e=>setNewTrade(p=>({...p,strategy:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="">Strateji seç...</option><option>Breakout</option><option>Pullback</option><option>Trend Following</option><option>Range</option><option>Scalp</option><option>Swing</option><option>News</option><option>Diger</option></select></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Etiketler</div><input value={newTrade.tags} onChange={e=>setNewTrade(p=>({...p,tags:e.target.value}))} placeholder="scalp, haber, kırılım" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}} /></div>
-                </div>
-                <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Notlar</div><textarea value={newTrade.notes} onChange={e=>setNewTrade(p=>({...p,notes:e.target.value}))} placeholder="Trade sebebi, piyasa koşulları, öğrenilen dersler..." rows={3} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",resize:"vertical",fontFamily:"'Inter',sans-serif"}} /></div>
-              </div>
-
-              {/* Trade Analizi / Puanlama */}
-              <div style={{...st.card,borderLeft:`3px solid #EC4899`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>⭐ Trade Puanlama</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Genel Trade Puanı (1-10)</div><div style={{display:"flex",gap:4}}>{[1,2,3,4,5,6,7,8,9,10].map(n=><button key={n} onClick={()=>setNewTrade(p=>({...p,score:n}))} style={{width:30,height:30,borderRadius:6,border:`1px solid ${newTrade.score===n?T.accent+"66":T.border}`,background:newTrade.score===n?T.accentGlow:T.bgInput,color:newTrade.score===n?T.accent:T.textMuted,fontSize:12,fontWeight:700,cursor:"pointer"}}>{n}</button>)}</div></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Setup Kalitesi</div><div style={{display:"flex",gap:4}}>{["A+ Mükemmel","A İyi","B Orta","C Zayıf"].map(q=><button key={q} onClick={()=>setNewTrade(p=>({...p,setupQuality:q}))} style={{padding:"8px 12px",borderRadius:6,border:`1px solid ${newTrade.setupQuality===q?T.accent+"66":T.border}`,background:newTrade.setupQuality===q?T.accentGlow:T.bgInput,color:newTrade.setupQuality===q?T.accent:T.textMuted,fontSize:11,fontWeight:600,cursor:"pointer"}}>{q}</button>)}</div></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Execution Puanı (1-10)</div><div style={{display:"flex",gap:4}}>{[1,2,3,4,5,6,7,8,9,10].map(n=><button key={n} onClick={()=>setNewTrade(p=>({...p,execution:n}))} style={{width:30,height:30,borderRadius:6,border:`1px solid ${newTrade.execution===n?T.gold+"66":T.border}`,background:newTrade.execution===n?"#D4A01718":T.bgInput,color:newTrade.execution===n?T.gold:T.textMuted,fontSize:12,fontWeight:700,cursor:"pointer"}}>{n}</button>)}</div></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Plana Uyuldu mu?</div><div style={{display:"flex",gap:8}}>{[{v:true,l:"✓ Evet"},{v:false,l:"✕ Hayır"}].map(o=><button key={String(o.v)} onClick={()=>setNewTrade(p=>({...p,followedPlan:o.v}))} style={{flex:1,padding:"10px",borderRadius:8,border:`1px solid ${newTrade.followedPlan===o.v?(o.v?T.green:T.red)+"44":T.border}`,background:newTrade.followedPlan===o.v?(o.v?"#22C55E18":"#EF444418"):T.bgInput,color:newTrade.followedPlan===o.v?(o.v?T.green:T.red):T.textMuted,fontSize:13,fontWeight:600,cursor:"pointer"}}>{o.l}</button>)}</div></div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Duygu Durumu</div><select value={newTrade.emotion} onChange={e=>setNewTrade(p=>({...p,emotion:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="">Duygu seç...</option><option>Sakin</option><option>Heyecanlı</option><option>Korkulu</option><option>Açgözlü</option><option>Sabırsız</option><option>Kararsız</option><option>Güvenli</option></select></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Öğrenilen Dersler</div><input value={newTrade.lessons} onChange={e=>setNewTrade(p=>({...p,lessons:e.target.value}))} placeholder="Bu tradeden ne öğrendin?" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}} /></div>
+                <div style={{padding:20}}>
+                  {/* Tarihler sekmesi */}
+                  {(newTrade._tab==="dates"||!newTrade._tab)&&(
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,animation:"fadeUp .3s ease-out"}}>
+                      <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Giriş Tarihi</div><input type="datetime-local" value={newTrade.entryDate} onChange={e=>setNewTrade(p=>({...p,entryDate:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}/></div>
+                      <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Çıkış Tarihi</div><input type="datetime-local" value={newTrade.exitDate} onChange={e=>setNewTrade(p=>({...p,exitDate:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}/></div>
+                      <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Strateji</div><select value={newTrade.strategy} onChange={e=>setNewTrade(p=>({...p,strategy:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="">Seç...</option><option>Breakout</option><option>Pullback</option><option>Trend Following</option><option>Range</option><option>Scalp</option><option>Swing</option><option>News</option><option>Diğer</option></select></div>
+                      <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Etiketler</div><input value={newTrade.tags} onChange={e=>setNewTrade(p=>({...p,tags:e.target.value}))} placeholder="scalp, haber, kırılım" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}/></div>
+                    </div>
+                  )}
+                  {/* Notlar sekmesi */}
+                  {newTrade._tab==="notes"&&(
+                    <div style={{animation:"fadeUp .3s ease-out"}}>
+                      <div style={{marginBottom:12}}><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>📋 Notlar</div><textarea value={newTrade.notes} onChange={e=>setNewTrade(p=>({...p,notes:e.target.value}))} placeholder="Trade sebebi, piyasa koşulları, analiz..." rows={3} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",resize:"vertical",fontFamily:"'Inter',sans-serif"}}/></div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                        <div><div style={{fontSize:11,color:T.red,marginBottom:6,fontWeight:600}}>⚠ Hatalar</div><input value={newTrade.mistakes||""} onChange={e=>setNewTrade(p=>({...p,mistakes:e.target.value}))} placeholder="Yaptığın hatalar..." style={{width:"100%",padding:"10px 12px",background:"rgba(239,68,68,.04)",border:`1px solid ${T.red}22`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}/></div>
+                        <div><div style={{fontSize:11,color:T.green,marginBottom:6,fontWeight:600}}>💡 Öğrenilen Dersler</div><input value={newTrade.lessons} onChange={e=>setNewTrade(p=>({...p,lessons:e.target.value}))} placeholder="Bu tradeden ne öğrendin?" style={{width:"100%",padding:"10px 12px",background:"rgba(34,197,94,.04)",border:`1px solid ${T.green}22`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}/></div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Puanlama sekmesi */}
+                  {newTrade._tab==="score"&&(
+                    <div style={{animation:"fadeUp .3s ease-out"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                        <div>
+                          <div style={{fontSize:11,color:T.textMuted,marginBottom:8,fontWeight:500}}>Genel Puan</div>
+                          <div style={{display:"flex",gap:3}}>
+                            {[1,2,3,4,5,6,7,8,9,10].map(n=>(
+                              <button key={n} onClick={()=>setNewTrade(p=>({...p,score:n}))}
+                                style={{flex:1,height:34,borderRadius:6,border:`1px solid ${n<=newTrade.score?T.accent+"66":T.border}`,
+                                  background:n<=newTrade.score?`rgba(147,51,234,${0.08+n*0.015})`:T.bgInput,
+                                  color:n<=newTrade.score?T.accent:T.textMuted,fontSize:11,fontWeight:700,cursor:"pointer",
+                                  transition:"all .15s",transform:n===newTrade.score?"scale(1.1)":"scale(1)"}}>
+                                {n}
+                              </button>
+                            ))}
+                          </div>
+                          <div style={{marginTop:6,fontSize:11,color:T.textMuted}}>
+                            Seçilen: <span style={{color:newTrade.score>=7?T.green:newTrade.score>=4?T.gold:T.red,fontWeight:700}}>{newTrade.score}/10 {newTrade.score>=8?"🔥":newTrade.score>=6?"✓":newTrade.score>=4?"→":"✗"}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{fontSize:11,color:T.textMuted,marginBottom:8,fontWeight:500}}>Setup Kalitesi</div>
+                          <div style={{display:"flex",gap:6}}>
+                            {[["A+","#22C55E"],["A","#9333EA"],["B","#EAB308"],["C","#EF4444"]].map(([q,clr])=>(
+                              <button key={q} onClick={()=>setNewTrade(p=>({...p,setupQuality:q==="A+"?"A+ Mükemmel":q==="A"?"A İyi":q==="B"?"B Orta":"C Zayıf"}))}
+                                style={{flex:1,padding:"10px 4px",borderRadius:8,border:`1px solid ${newTrade.setupQuality&&newTrade.setupQuality.startsWith(q)?clr+"66":T.border}`,
+                                  background:newTrade.setupQuality&&newTrade.setupQuality.startsWith(q)?clr+"18":T.bgInput,
+                                  color:newTrade.setupQuality&&newTrade.setupQuality.startsWith(q)?clr:T.textMuted,
+                                  fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .15s"}}>
+                                {q}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{fontSize:11,color:T.textMuted,marginBottom:8,fontWeight:500}}>Plana Uyuldu?</div>
+                          <div style={{display:"flex",gap:8}}>
+                            {[{v:true,l:"✓ Evet",c:T.green},{v:false,l:"✗ Hayır",c:T.red}].map(o=>(
+                              <button key={String(o.v)} onClick={()=>setNewTrade(p=>({...p,followedPlan:o.v}))}
+                                style={{flex:1,padding:"11px",borderRadius:8,border:`1px solid ${newTrade.followedPlan===o.v?o.c+"44":T.border}`,
+                                  background:newTrade.followedPlan===o.v?o.c+"18":T.bgInput,
+                                  color:newTrade.followedPlan===o.v?o.c:T.textMuted,
+                                  fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .2s",
+                                  boxShadow:newTrade.followedPlan===o.v?`0 2px 12px ${o.c}22`:"none"}}>
+                                {o.l}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{fontSize:11,color:T.textMuted,marginBottom:8,fontWeight:500}}>Duygu Durumu</div>
+                          <select value={newTrade.emotion} onChange={e=>setNewTrade(p=>({...p,emotion:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}>
+                            <option value="">Seç...</option><option>Sakin</option><option>Heyecanlı</option><option>Korkulu</option><option>Açgözlü</option><option>Sabırsız</option><option>Kararsız</option><option>Güvenli</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
