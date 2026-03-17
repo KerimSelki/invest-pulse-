@@ -2118,7 +2118,7 @@ export default function CryptoPortfolio() {
             :
               <div style={{...st.card,padding:0,overflow:"hidden"}}><div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>
-                  {["Tarih","Sembol","Yön","Giriş","Çıkış","Miktar","K/Z","K/Z%","Durum","Puan",""].map(h=><th key={h} style={{...st.th,textAlign:h===""?"center":"left",padding:"10px 8px"}}>{h}</th>)}
+                  {["Tarih","Sembol","Yön","Giriş","Çıkış","SL","K/Z","Durum","Puan",""].map(h=><th key={h} style={{...st.th,textAlign:h===""?"center":"left",padding:"10px 8px"}}>{h}</th>)}
                 </tr></thead><tbody>
                 {filteredTrades.map((t,i)=>(
                   <tr key={t.id||i} style={{borderBottom:`1px solid ${T.border}`}}>
@@ -2130,45 +2130,23 @@ export default function CryptoPortfolio() {
                     <td style={{padding:"10px 8px"}}><span style={{fontSize:11,padding:"3px 8px",borderRadius:4,background:t.direction==="Long"?"#22C55E18":"#EF444418",color:t.direction==="Long"?"#22C55E":"#EF4444",fontWeight:700}}>{t.direction}</span></td>
                     <td style={{padding:"10px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:T.text}}>${parseFloat(t.entryPrice||0).toFixed(2)}</td>
                     <td style={{padding:"10px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:t.exitPrice?T.text:T.textMuted}}>{t.exitPrice?"$"+parseFloat(t.exitPrice).toFixed(2):"—"}</td>
-                    <td style={{padding:"10px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:T.text}}>${parseFloat(t.amount||0).toFixed(0)}</td>
-                    <td style={{padding:"10px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:t.status==="Kapali"?(calcPnl(t)>0?T.green:T.red):T.textMuted}}>{t.status==="Kapali"?(calcPnl(t)>0?"+":"")+calcPnl(t).toFixed(2):"—"}</td>
-                    <td style={{padding:"10px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:t.status==="Kapali"?(calcPnl(t)>0?T.green:T.red):T.textMuted}}>{t.status==="Kapali"?(calcPnl(t)>0?"+":"")+calcPnlPct(t).toFixed(2)+"%":"—"}</td>
-                    <td style={{padding:"6px 8px",minWidth:140}}>
-                      {t.status==="Acik"
-                        ? <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                            <div style={{display:"flex",gap:3}}>
-                              {t.stopLoss&&<button onClick={()=>{
-                                const updated=[...trades];
-                                updated[i]={...t,status:"Kapali",exitPrice:String(t.stopLoss)};
-                                setTrades(updated);
-                              }} style={{flex:1,padding:"4px 6px",fontSize:9,fontWeight:700,borderRadius:4,border:`1px solid ${T.red}44`,background:"rgba(239,68,68,.08)",color:T.red,cursor:"pointer"}}>🛑 SL</button>}
-                              {t.tp1&&<button onClick={()=>{
-                                const updated=[...trades];
-                                updated[i]={...t,status:"Kapali",exitPrice:String(t.tp1)};
-                                setTrades(updated);
-                              }} style={{flex:1,padding:"4px 6px",fontSize:9,fontWeight:700,borderRadius:4,border:"1px solid #22C55E44",background:"rgba(34,197,94,.08)",color:"#22C55E",cursor:"pointer"}}>TP1</button>}
-                              {t.tp2&&<button onClick={()=>{
-                                const updated=[...trades];
-                                const tps=[parseFloat(t.tp1||0),parseFloat(t.tp2||0)].filter(v=>v>0);
-                                const avg=tps.reduce((s,p)=>s+p,0)/tps.length;
-                                updated[i]={...t,status:"Kapali",exitPrice:String(avg.toFixed(avg<1?6:4))};
-                                setTrades(updated);
-                              }} style={{flex:1,padding:"4px 6px",fontSize:9,fontWeight:700,borderRadius:4,border:"1px solid #10B98144",background:"rgba(16,185,129,.08)",color:"#10B981",cursor:"pointer"}}>TP2</button>}
-                              {t.tp3&&<button onClick={()=>{
-                                const updated=[...trades];
-                                const tps=[parseFloat(t.tp1||0),parseFloat(t.tp2||0),parseFloat(t.tp3||0)].filter(v=>v>0);
-                                const avg=tps.reduce((s,p)=>s+p,0)/tps.length;
-                                updated[i]={...t,status:"Kapali",exitPrice:String(avg.toFixed(avg<1?6:4))};
-                                setTrades(updated);
-                              }} style={{flex:1,padding:"4px 6px",fontSize:9,fontWeight:700,borderRadius:4,border:"1px solid #06B6D444",background:"rgba(6,182,212,.08)",color:"#06B6D4",cursor:"pointer"}}>TP3</button>}
-                            </div>
-                            {!t.stopLoss&&!t.tp1&&<span style={{fontSize:9,padding:"3px 8px",borderRadius:4,background:"#EAB30818",color:"#EAB308",fontWeight:600,textAlign:"center"}}>Açık</span>}
-                          </div>
-                        : <div style={{display:"flex",alignItems:"center",gap:5}}>
-                            <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"#4A4D6518",color:"#8B8EA0",fontWeight:600}}>✓ Kapalı</span>
-                            {t.exitPrice&&<span style={{fontSize:9,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(t.exitPrice).toFixed(2)}</span>}
-                          </div>
-                      }
+                    <td style={{padding:"10px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:t.stopLoss?T.red:T.textMuted}}>{t.stopLoss?"$"+parseFloat(t.stopLoss).toFixed(2):"—"}</td>
+                    <td style={{padding:"10px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:t.status==="Kapali"?(calcPnl(t)>0?T.green:T.red):T.textMuted}}>{t.status==="Kapali"?(calcPnl(t)>0?"+":"")+calcPnl(t).toFixed(2)+"$":"—"}</td>
+                    <td style={{padding:"6px 8px",minWidth:110}}>
+                      <div style={{display:"flex",background:T.bgInput,borderRadius:7,padding:2,gap:2,border:`1px solid ${T.border}`}}>
+                        <button onClick={()=>{const u=[...trades];u[i]={...u[i],status:"Acik"};setTrades(u);}}
+                          style={{flex:1,padding:"5px 8px",borderRadius:5,border:"none",fontSize:10,fontWeight:700,cursor:"pointer",transition:"all .15s",
+                            background:t.status==="Acik"?"linear-gradient(135deg,#EAB308,#D97706)":"transparent",
+                            color:t.status==="Acik"?"#0B0D15":T.textMuted}}>
+                          Açık
+                        </button>
+                        <button onClick={()=>{const u=[...trades];u[i]={...u[i],status:"Kapali"};setTrades(u);}}
+                          style={{flex:1,padding:"5px 8px",borderRadius:5,border:"none",fontSize:10,fontWeight:700,cursor:"pointer",transition:"all .15s",
+                            background:t.status==="Kapali"?"linear-gradient(135deg,#6366f1,#8B5CF6)":"transparent",
+                            color:t.status==="Kapali"?"#fff":T.textMuted}}>
+                          Kapalı
+                        </button>
+                      </div>
                     </td>
                     <td style={{padding:"10px 8px",textAlign:"center"}}><span style={{fontSize:12,fontWeight:700,color:t.score>=7?T.green:t.score>=4?T.gold:T.red}}>{t.score}/10</span></td>
                     <td style={{padding:"10px 8px",textAlign:"center"}}><div style={{display:"flex",gap:4,justifyContent:"center"}}><button onClick={()=>{setNewTrade({...t});setEditTrade(i);setTradeView("add");}} style={{width:26,height:26,border:`1px solid ${T.borderLight}`,background:T.bgCardSolid,color:T.textSecondary,borderRadius:5,cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>✎</button><button onClick={()=>deleteTrade(i)} style={{width:26,height:26,border:`1px solid ${T.red}33`,background:T.redGlow,color:T.red,borderRadius:5,cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div></td>
