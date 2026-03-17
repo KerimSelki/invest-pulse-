@@ -2195,63 +2195,122 @@ export default function CryptoPortfolio() {
               </div>
 
               {/* R Hesabı — Risk Yönetimi */}
-              <div style={{...st.card,borderLeft:`3px solid ${T.gold}`,background:`linear-gradient(135deg,rgba(212,160,23,.04),transparent)`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:6,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <span>🎲 R Hesabı</span>
-                  <span style={{fontSize:10,color:T.textMuted,fontWeight:400}}>Risk bazlı pozisyon büyüklüğü</span>
+              <div style={{...st.card,borderLeft:`3px solid ${T.gold}`,background:`linear-gradient(135deg,rgba(212,160,23,.05),transparent)`}}>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span>🎲 R Hesabı — Pozisyon Boyutu</span>
+                  <span style={{fontSize:10,color:T.textMuted,fontWeight:400}}>Entry + SL girince otomatik hesaplanır</span>
                 </div>
-                <div style={{fontSize:12,color:T.textMuted,marginBottom:14,lineHeight:1.7,padding:"8px 12px",background:T.bgInput,borderRadius:8,border:`1px solid ${T.border}`}}>
-                  <strong style={{color:T.gold}}>1R</strong> = Her işlemde riske ettiğin sabit miktar. SL'ye göre pozisyon otomatik hesaplanır.
-                  <span style={{display:"block",marginTop:4,fontSize:11,color:T.textMuted}}>Örnek: R=$100, Entry=$88, SL=$85 → Birim risk $3 → Pozisyon = $2.933</span>
-                </div>
-                {/* R ve Kasa ayarı */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
-                  <div>
-                    <div style={{fontSize:11,color:T.gold,marginBottom:6,fontWeight:700}}>1R Miktarı ($)</div>
-                    <div style={{display:"flex",alignItems:"center",gap:0,background:T.bgInput,border:`1px solid ${T.gold}44`,borderRadius:8,overflow:"hidden"}}>
-                      <button onClick={()=>setTradeR(r=>Math.max(1,r-10))} style={{padding:"10px 12px",background:"transparent",border:"none",color:T.gold,fontSize:16,cursor:"pointer",fontWeight:700}}>−</button>
+
+                {/* 1R Ayarı */}
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:11,color:T.gold,marginBottom:8,fontWeight:700}}>1R = Her işlemde riske ettiğim tutar ($)</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:0,background:T.bgInput,border:`1px solid ${T.gold}55`,borderRadius:10,overflow:"hidden",flex:"0 0 auto"}}>
+                      <button onClick={()=>setTradeR(r=>Math.max(1,r-10))} style={{padding:"12px 16px",background:"transparent",border:"none",color:T.gold,fontSize:18,cursor:"pointer",fontWeight:700}}>−</button>
                       <input type="number" value={tradeR} onChange={e=>setTradeR(parseFloat(e.target.value)||0)}
-                        style={{flex:1,padding:"10px 4px",background:"transparent",border:"none",color:T.gold,fontSize:15,fontWeight:800,outline:"none",fontFamily:"'JetBrains Mono',monospace",textAlign:"center"}}/>
-                      <button onClick={()=>setTradeR(r=>r+10)} style={{padding:"10px 12px",background:"transparent",border:"none",color:T.gold,fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
+                        style={{width:90,padding:"12px 4px",background:"transparent",border:"none",color:T.gold,fontSize:18,fontWeight:800,outline:"none",fontFamily:"'JetBrains Mono',monospace",textAlign:"center"}}/>
+                      <button onClick={()=>setTradeR(r=>r+10)} style={{padding:"12px 16px",background:"transparent",border:"none",color:T.gold,fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
                     </div>
-                    <div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>
-                      {[50,100,200,500].map(r=>(
+                    <div style={{display:"flex",gap:6}}>
+                      {[25,50,100,200,500,1000].map(r=>(
                         <button key={r} onClick={()=>setTradeR(r)}
-                          style={{flex:1,padding:"5px",background:tradeR===r?T.goldGlow:T.bgInput,border:`1px solid ${tradeR===r?T.gold+"44":T.border}`,borderRadius:5,color:tradeR===r?T.gold:T.textMuted,fontSize:10,fontWeight:600,cursor:"pointer"}}>
+                          style={{padding:"8px 12px",background:tradeR===r?T.goldGlow:T.bgInput,border:`1px solid ${tradeR===r?T.gold+"55":T.border}`,borderRadius:7,color:tradeR===r?T.gold:T.textMuted,fontSize:11,fontWeight:700,cursor:"pointer",transition:"all .15s"}}>
                           ${r}
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Risk/Ödül Oranı</div>
-                    {newTrade.entryPrice&&newTrade.stopLoss&&newTrade.tp1&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&parseFloat(newTrade.tp1)>0
-                      ? <div style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8}}>
-                          <div style={{fontSize:22,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:T.accent}}>
-                            {(Math.abs(parseFloat(newTrade.tp1)-parseFloat(newTrade.entryPrice))/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))).toFixed(2)}R
+                </div>
+
+                {/* ANA HESAP BLOĞU */}
+                {newTrade.entryPrice&&newTrade.stopLoss&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))>0
+                  ? <div style={{background:`linear-gradient(135deg,rgba(212,160,23,.1),rgba(212,160,23,.04))`,border:`1px solid ${T.gold}44`,borderRadius:12,padding:18,marginBottom:14}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:14}}>
+                        {/* Birim Risk */}
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:10,color:T.textMuted,marginBottom:4,fontWeight:500}}>Birim Risk</div>
+                          <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>
+                            ${Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss)).toFixed(parseFloat(newTrade.entryPrice)<10?4:2)}
                           </div>
-                          <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>TP1 / SL oranı</div>
+                          <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>|Entry − SL|</div>
                         </div>
-                      : <div style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.textMuted,fontSize:12}}>Entry + SL + TP1 gir</div>
-                    }
-                  </div>
-                  <div>
-                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Pozisyon Büyüklüğü</div>
-                    {newTrade.entryPrice&&newTrade.stopLoss&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))>0
-                      ? <div style={{padding:"10px 12px",background:`rgba(212,160,23,.08)`,border:`1px solid ${T.gold}33`,borderRadius:8}}>
-                          <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:T.gold}}>
+                        {/* Kaç Birim Al */}
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:10,color:T.textMuted,marginBottom:4,fontWeight:500}}>Alınacak Miktar</div>
+                          <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:"#3b82f6"}}>
+                            {(tradeR/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))).toFixed(parseFloat(newTrade.entryPrice)>100?4:6)}
+                          </div>
+                          <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>adet / lot</div>
+                        </div>
+                        {/* Toplam Pozisyon */}
+                        <div style={{textAlign:"center",background:"rgba(212,160,23,.1)",borderRadius:8,padding:"8px 4px",border:`1px solid ${T.gold}33`}}>
+                          <div style={{fontSize:10,color:T.gold,marginBottom:4,fontWeight:700}}>💰 POZİSYON</div>
+                          <div style={{fontSize:22,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:T.gold}}>
                             ${(tradeR/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*parseFloat(newTrade.entryPrice)).toFixed(0)}
                           </div>
-                          <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>1R=${tradeR} ile hesaplandı</div>
-                          <button onClick={()=>setNewTrade(p=>({...p,amount:String((tradeR/Math.abs(parseFloat(p.entryPrice)-parseFloat(p.stopLoss))*parseFloat(p.entryPrice)).toFixed(0)),rAmount:String(tradeR)}))}
-                            style={{marginTop:6,width:"100%",padding:"5px",background:T.gold,border:"none",borderRadius:5,color:"#0B0D15",fontSize:10,fontWeight:700,cursor:"pointer"}}>
-                            ↑ Miktara Uygula
-                          </button>
+                          <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>toplam değer</div>
                         </div>
-                      : <div style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.textMuted,fontSize:12}}>Entry + SL gir</div>
-                    }
+                        {/* R/Ödül */}
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:10,color:T.textMuted,marginBottom:4,fontWeight:500}}>R/Ödül (TP1)</div>
+                          {newTrade.tp1&&parseFloat(newTrade.tp1)>0
+                            ? <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:T.accent}}>
+                                {(Math.abs(parseFloat(newTrade.tp1)-parseFloat(newTrade.entryPrice))/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))).toFixed(2)}R
+                              </div>
+                            : <div style={{fontSize:13,color:T.textMuted,marginTop:8}}>TP1 gir</div>
+                          }
+                          <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>kazanç oranı</div>
+                        </div>
+                      </div>
+                      {/* Formül gösterimi */}
+                      <div style={{padding:"8px 12px",background:T.bgInput,borderRadius:8,fontSize:11,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                        <span style={{color:T.gold,fontWeight:700}}>1R=${tradeR}</span>
+                        <span>÷</span>
+                        <span style={{color:T.text}}>|{parseFloat(newTrade.entryPrice).toFixed(2)} − {parseFloat(newTrade.stopLoss).toFixed(2)}|</span>
+                        <span>=</span>
+                        <span style={{color:"#3b82f6",fontWeight:700}}>{(tradeR/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))).toFixed(4)} adet</span>
+                        <span>×</span>
+                        <span style={{color:T.text}}>{parseFloat(newTrade.entryPrice).toFixed(2)}</span>
+                        <span>=</span>
+                        <span style={{color:T.gold,fontWeight:800}}>${(tradeR/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*parseFloat(newTrade.entryPrice)).toFixed(2)}</span>
+                      </div>
+                      <button onClick={()=>setNewTrade(p=>({...p,
+                        amount:String((tradeR/Math.abs(parseFloat(p.entryPrice)-parseFloat(p.stopLoss))*parseFloat(p.entryPrice)).toFixed(0)),
+                        rAmount:String(tradeR)
+                      }))}
+                        style={{marginTop:10,width:"100%",padding:"10px",background:`linear-gradient(135deg,${T.gold},#B8860B)`,border:"none",borderRadius:8,color:"#0B0D15",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"'Inter',sans-serif",letterSpacing:".3px",boxShadow:`0 4px 16px rgba(212,160,23,.3)`}}>
+                        ↑ Bu Pozisyon Boyutunu Uygula
+                      </button>
+                    </div>
+                  : <div style={{padding:"16px",background:T.bgInput,borderRadius:10,border:`1px solid ${T.border}`,textAlign:"center",color:T.textMuted,fontSize:13}}>
+                      <div style={{fontSize:24,marginBottom:8}}>⬆</div>
+                      Entry fiyatı ve Stop Loss gir → pozisyon boyutu otomatik hesaplanır
+                    </div>
+                }
+
+                {/* R Tablosu */}
+                {newTrade.entryPrice&&newTrade.stopLoss&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&(
+                  <div style={{padding:"10px 14px",background:T.bgInput,borderRadius:8,border:`1px solid ${T.border}`}}>
+                    <div style={{fontSize:10,color:T.textMuted,marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>R Tablosu — Hedef Fiyatlar</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {[-2,-1,-0.5,0.5,1,1.5,2,3,5].map(mult=>(
+                        <div key={mult} style={{flex:"1 1 80px",padding:"6px 8px",
+                          background:mult<0?"rgba(239,68,68,.06)":"rgba(34,197,94,.06)",
+                          border:`1px solid ${mult<0?T.red:T.green}22`,borderRadius:6,textAlign:"center"}}>
+                          <div style={{fontSize:10,fontWeight:700,color:mult<0?T.red:T.green}}>{mult>0?"+":""}{mult}R</div>
+                          <div style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:T.text,fontWeight:600}}>
+                            ${(newTrade.direction==="Long"
+                              ? parseFloat(newTrade.entryPrice)+Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*mult
+                              : parseFloat(newTrade.entryPrice)-Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*mult
+                            ).toFixed((parseFloat(newTrade.entryPrice)+Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*mult)<10?4:2)}
+                          </div>
+                          <div style={{fontSize:10,color:mult<0?T.red+"aa":T.green+"aa"}}>{tradeR*mult>0?"+":""}{(tradeR*mult).toFixed(0)}$</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+              </div>
                 {/* R Çarpanları özeti */}
                 {newTrade.entryPrice&&newTrade.stopLoss&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&(
                   <div style={{padding:"10px 14px",background:T.bgInput,borderRadius:8,border:`1px solid ${T.border}`}}>
