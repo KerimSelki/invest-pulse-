@@ -2198,42 +2198,40 @@ export default function CryptoPortfolio() {
                   </div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Piyasa Türü</div><select value={newTrade.market} onChange={e=>setNewTrade(p=>({...p,market:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Kripto</option><option>Forex</option><option>Hisse</option><option>Emtia</option></select></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Borsa</div><select value={newTrade.exchange} onChange={e=>setNewTrade(p=>({...p,exchange:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Bybit</option><option>OKX</option><option>Dreamcash</option></select></div>
-                  <div style={{gridColumn:"1 / -1"}}>
-                    <div style={{fontSize:11,color:T.textMuted,marginBottom:8,fontWeight:500}}>Yön</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                      {/* LONG */}
+                  <div>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Yön</div>
+                    <div style={{display:"flex",gap:0,background:T.bgInput,borderRadius:10,padding:3,border:`1px solid ${T.border}`,position:"relative",overflow:"hidden"}}>
+                      {/* sliding indicator */}
+                      <div style={{
+                        position:"absolute",top:3,bottom:3,
+                        width:"calc(50% - 3px)",
+                        left:newTrade.direction==="Long"?"3px":"calc(50%)",
+                        borderRadius:7,
+                        background:newTrade.direction==="Long"?"linear-gradient(135deg,#22C55E,#16A34A)":"linear-gradient(135deg,#EF4444,#DC2626)",
+                        boxShadow:newTrade.direction==="Long"?"0 4px 16px rgba(34,197,94,.4)":"0 4px 16px rgba(239,68,68,.4)",
+                        transition:"left .25s cubic-bezier(.22,1,.36,1), background .25s ease"
+                      }}/>
                       <button onClick={()=>setNewTrade(p=>({...p,direction:"Long"}))}
-                        style={{
-                          padding:"18px 12px",borderRadius:12,border:`2px solid ${newTrade.direction==="Long"?"#22C55E":"#22C55E22"}`,
-                          fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"'Inter',sans-serif",
-                          transition:"all .25s cubic-bezier(.22,1,.36,1)",
-                          background:newTrade.direction==="Long"?"linear-gradient(135deg,#22C55E,#16A34A)":"rgba(34,197,94,.04)",
-                          color:newTrade.direction==="Long"?"#fff":"#22C55E",
-                          boxShadow:newTrade.direction==="Long"?"0 6px 24px rgba(34,197,94,.35)":"none",
-                          transform:newTrade.direction==="Long"?"translateY(-1px)":"translateY(0)",
-                          display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        style={{flex:1,padding:"11px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",
+                          position:"relative",zIndex:1,background:"transparent",
+                          color:newTrade.direction==="Long"?"#fff":T.textMuted,
+                          transition:"color .2s ease",
+                          display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{transition:"transform .25s",transform:newTrade.direction==="Long"?"scale(1.15)":"scale(1)"}}>
                           <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
                         </svg>
-                        LONG
-                        <span style={{fontSize:10,fontWeight:500,opacity:.75}}>Yükseliş bekliyorum</span>
+                        Long
                       </button>
-                      {/* SHORT */}
                       <button onClick={()=>setNewTrade(p=>({...p,direction:"Short"}))}
-                        style={{
-                          padding:"18px 12px",borderRadius:12,border:`2px solid ${newTrade.direction==="Short"?"#EF4444":"#EF444422"}`,
-                          fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"'Inter',sans-serif",
-                          transition:"all .25s cubic-bezier(.22,1,.36,1)",
-                          background:newTrade.direction==="Short"?"linear-gradient(135deg,#EF4444,#DC2626)":"rgba(239,68,68,.04)",
-                          color:newTrade.direction==="Short"?"#fff":"#EF4444",
-                          boxShadow:newTrade.direction==="Short"?"0 6px 24px rgba(239,68,68,.35)":"none",
-                          transform:newTrade.direction==="Short"?"translateY(-1px)":"translateY(0)",
-                          display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        style={{flex:1,padding:"11px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",
+                          position:"relative",zIndex:1,background:"transparent",
+                          color:newTrade.direction==="Short"?"#fff":T.textMuted,
+                          transition:"color .2s ease",
+                          display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{transition:"transform .25s",transform:newTrade.direction==="Short"?"scale(1.15)":"scale(1)"}}>
                           <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
                         </svg>
-                        SHORT
-                        <span style={{fontSize:10,fontWeight:500,opacity:.75}}>Düşüş bekliyorum</span>
+                        Short
                       </button>
                     </div>
                   </div>
