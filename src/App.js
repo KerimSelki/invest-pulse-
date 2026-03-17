@@ -1811,6 +1811,11 @@ export default function CryptoPortfolio() {
   // Loading artık sayfayı bloklamaz — skeleton gösterilir
   const isLoading = loading && Object.keys(prices).length === 0;
 
+  // ── Yükselen & Düşenler ──
+  const gainersLosers = allPData.filter(x=>x.currentPrice>0).sort((a,b)=>b.change24h-a.change24h);
+  const topGainers = gainersLosers.slice(0,5);
+  const topLosers = [...gainersLosers].reverse().slice(0,5);
+
   return (
     <div style={{fontFamily:"'Inter',sans-serif",background:T.bg,minHeight:"100vh",color:T.text,transition:"background .3s, color .3s"}}>
       <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 24px",borderBottom:`1px solid ${T.border}`,background:T.headerBg,backdropFilter:"blur(20px)",position:"sticky",top:0,zIndex:100}}>
@@ -2086,45 +2091,56 @@ export default function CryptoPortfolio() {
           </div>
 
           {/* 🔥 En Çok Yükselen & Düşenler */}
-          {allPData.length>1&&(()=>{
-            const sorted=[...allPData].filter(x=>x.currentPrice>0).sort((a,b)=>b.change24h-a.change24h);
-            const gainers=sorted.slice(0,5);
-            const losers=[...sorted].reverse().slice(0,5);
-            if(sorted.length===0) return null;
-            const renderItem=(item,i,max)=>{
-              const mc=getMarketColor(getMarketType(item.coinId));
-              const isUp=item.change24h>=0;
-              const absPct=Math.abs(item.change24h);
-              const maxPct=Math.max(...sorted.map(x=>Math.abs(x.change24h)),1);
-              const barW=Math.max((absPct/maxPct)*100,2);
-              return(<div key={item.coinId} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<max-1?`1px solid ${T.bgCardSolid}`:"none"}}>
-                <div style={{width:26,height:26,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,fontFamily:"'Inter',monospace",background:mc+"18",color:mc}}>{item.coin?.symbol?.charAt(0)||"?"}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:4}}>
-                    <span style={{fontWeight:600,fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.coin?.symbol}</span>
-                    <span style={{fontSize:7,padding:"1px 3px",borderRadius:2,background:mc+"15",color:mc,fontWeight:700}}>{getMarketLabel(getMarketType(item.coinId))}</span>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
-                    <div style={{flex:1,height:3,background:T.border,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:barW+"%",background:isUp?T.green:T.red,borderRadius:2,transition:"width .5s"}}/></div>
-                  </div>
-                </div>
-                <div style={{textAlign:"right",minWidth:80}}>
-                  <div style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:isUp?T.green:T.red}}>{isUp?"▲":"▼"} {absPct.toFixed(2)}%</div>
-                  <div style={{fontSize:10,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{fmt(item.currentValue)}</div>
-                </div>
-              </div>);
-            };
-            return(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+          {gainersLosers.length>1&&(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
               <div style={{...st.card,padding:16}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🚀</span><span style={{fontSize:13,fontWeight:600,color:T.green}}>En Çok Yükselen</span><span style={{fontSize:10,color:T.textMuted}}>(24s)</span></div>
-                {gainers.map((item,i)=>renderItem(item,i,gainers.length))}
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}>
+                  <span style={{fontSize:16}}>🚀</span>
+                  <span style={{fontSize:13,fontWeight:600,color:T.green}}>En Çok Yükselen</span>
+                  <span style={{fontSize:10,color:T.textMuted}}>(24s)</span>
+                </div>
+                {topGainers.map((item,i)=>(
+                  <div key={item.coinId} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<topGainers.length-1?`1px solid ${T.bgCardSolid}`:"none"}}>
+                    <div style={{width:26,height:26,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,background:getMarketColor(getMarketType(item.coinId))+"18",color:getMarketColor(getMarketType(item.coinId))}}>{item.coin?.symbol?.charAt(0)||"?"}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{fontWeight:600,fontSize:12}}>{item.coin?.symbol}</span>
+                        <span style={{fontSize:7,padding:"1px 3px",borderRadius:2,background:getMarketColor(getMarketType(item.coinId))+"15",color:getMarketColor(getMarketType(item.coinId)),fontWeight:700}}>{getMarketLabel(getMarketType(item.coinId))}</span>
+                      </div>
+                      <div style={{flex:1,height:3,background:T.border,borderRadius:2,overflow:"hidden",marginTop:3}}><div style={{height:"100%",width:Math.max((Math.abs(item.change24h)/Math.max(...gainersLosers.map(x=>Math.abs(x.change24h)),1))*100,2)+"%",background:T.green,borderRadius:2}}/></div>
+                    </div>
+                    <div style={{textAlign:"right",minWidth:70}}>
+                      <div style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.green}}>▲ {Math.abs(item.change24h).toFixed(2)}%</div>
+                      <div style={{fontSize:10,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{fmt(item.currentValue)}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
               <div style={{...st.card,padding:16}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>📉</span><span style={{fontSize:13,fontWeight:600,color:T.red}}>En Çok Düşen</span><span style={{fontSize:10,color:T.textMuted}}>(24s)</span></div>
-                {losers.map((item,i)=>renderItem(item,i,losers.length))}
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}>
+                  <span style={{fontSize:16}}>📉</span>
+                  <span style={{fontSize:13,fontWeight:600,color:T.red}}>En Çok Düşen</span>
+                  <span style={{fontSize:10,color:T.textMuted}}>(24s)</span>
+                </div>
+                {topLosers.map((item,i)=>(
+                  <div key={item.coinId} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<topLosers.length-1?`1px solid ${T.bgCardSolid}`:"none"}}>
+                    <div style={{width:26,height:26,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,background:getMarketColor(getMarketType(item.coinId))+"18",color:getMarketColor(getMarketType(item.coinId))}}>{item.coin?.symbol?.charAt(0)||"?"}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{fontWeight:600,fontSize:12}}>{item.coin?.symbol}</span>
+                        <span style={{fontSize:7,padding:"1px 3px",borderRadius:2,background:getMarketColor(getMarketType(item.coinId))+"15",color:getMarketColor(getMarketType(item.coinId)),fontWeight:700}}>{getMarketLabel(getMarketType(item.coinId))}</span>
+                      </div>
+                      <div style={{flex:1,height:3,background:T.border,borderRadius:2,overflow:"hidden",marginTop:3}}><div style={{height:"100%",width:Math.max((Math.abs(item.change24h)/Math.max(...gainersLosers.map(x=>Math.abs(x.change24h)),1))*100,2)+"%",background:T.red,borderRadius:2}}/></div>
+                    </div>
+                    <div style={{textAlign:"right",minWidth:70}}>
+                      <div style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.red}}>▼ {Math.abs(item.change24h).toFixed(2)}%</div>
+                      <div style={{fontSize:10,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{fmt(item.currentValue)}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>);
-          })()}
+            </div>
+          )}
         </div>}
 
         {/* ═══ REPORTS ═══ */}
