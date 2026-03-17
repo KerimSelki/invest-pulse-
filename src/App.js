@@ -242,19 +242,18 @@ const CoinPicker = ({ value, onChange, prices, savedKey, knownCoins, fmpStocks }
           );})}
         </div>
       )}
+      {/* 🔍 Lightbox */}
+      {lightboxSrc&&(
+        <div onClick={()=>setLightboxSrc("")}
+          style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"zoom-out",animation:"fadeUp .15s ease-out"}}>
+          <img src={lightboxSrc} alt=""
+            style={{maxWidth:"95vw",maxHeight:"93vh",objectFit:"contain",borderRadius:12,boxShadow:"0 20px 80px rgba(0,0,0,.8)",animation:"fadeUp .2s ease-out"}}
+            onClick={e=>e.stopPropagation()}/>
+          <button onClick={()=>setLightboxSrc("")}
+            style={{position:"fixed",top:20,right:24,width:38,height:38,borderRadius:10,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.2)",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}}>✕</button>
+        </div>
+      )}
     </div>
-
-    {/* 🔍 Lightbox */}
-    {lightboxSrc&&(
-      <div onClick={()=>setLightboxSrc("")}
-        style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"zoom-out",animation:"fadeUp .15s ease-out"}}>
-        <img src={lightboxSrc} alt=""
-          style={{maxWidth:"95vw",maxHeight:"93vh",objectFit:"contain",borderRadius:12,boxShadow:"0 20px 80px rgba(0,0,0,.8)",animation:"fadeUp .2s ease-out"}}
-          onClick={e=>e.stopPropagation()}/>
-        <button onClick={()=>setLightboxSrc("")}
-          style={{position:"fixed",top:20,right:24,width:38,height:38,borderRadius:10,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.2)",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}}>✕</button>
-      </div>
-    )}
   );
 };
 
