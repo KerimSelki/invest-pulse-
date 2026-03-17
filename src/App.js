@@ -19,102 +19,6 @@ const Spark = ({data,color}) => (<ResponsiveContainer width={100} height={36}><A
 
 // ═══ Coin Search/Picker Component ═══
 const searchCache = {};
-// ═══ Animasyonlu Donut Chart ═══
-const DonutChart = ({ data, total, themeColors }) => {
-  const [hovered, setHovered] = useState(null);
-  const [animated, setAnimated] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setAnimated(true), 120); return () => clearTimeout(t); }, []);
-  const size = 220, cx = 110, cy = 110, outerR = 88, innerR = 54;
-  const tau = 2 * Math.PI;
-  const top = data.slice(0, 10);
-  const otherVal = data.slice(10).reduce((s, d) => s + d.value, 0);
-  const chartData = otherVal > 0 ? [...top, { name: "Diğer", value: otherVal, color: "#4A4D65" }] : top;
-  let cum = -Math.PI / 2;
-  const slices = chartData.map(item => {
-    const angle = total > 0 ? (item.value / total) * tau : 0;
-    const s = cum; cum += angle;
-    return { ...item, startAngle: s, endAngle: cum, angle };
-  });
-  const p2c = (r, a) => ({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
-  const arc = (sl, ex = 0) => {
-    const R = outerR + ex, r = innerR - (ex > 0 ? 2 : 0);
-    const s = p2c(R, sl.startAngle), e = p2c(R, sl.endAngle);
-    const is = p2c(r, sl.startAngle), ie = p2c(r, sl.endAngle);
-    const lg = sl.angle > Math.PI ? 1 : 0;
-    return `M${s.x} ${s.y} A${R} ${R} 0 ${lg} 1 ${e.x} ${e.y} L${ie.x} ${ie.y} A${r} ${r} 0 ${lg} 0 ${is.x} ${is.y}Z`;
-  };
-  const hsl = hovered !== null ? slices[hovered] : null;
-  const T = themeColors;
-  return (
-    <div style={{display:"flex",flexDirection:"column",gap:0}}>
-      <div style={{position:"relative",width:size,height:size,margin:"0 auto"}}>
-        <svg width={size} height={size} style={{overflow:"visible"}}>
-          <defs>
-            {slices.map((s,i)=>(
-              <radialGradient key={i} id={`dg${i}`} cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor={s.color} stopOpacity="0.75"/>
-                <stop offset="100%" stopColor={s.color} stopOpacity="1"/>
-              </radialGradient>
-            ))}
-            <filter id="sliceGlow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          </defs>
-          {slices.map((sl,i)=>{
-            const isH = hovered===i;
-            return (
-              <path key={i} d={arc(sl, isH?9:0)}
-                fill={`url(#dg${i})`}
-                stroke={isH?"#ffffff":"transparent"} strokeWidth={isH?1.5:0}
-                filter={isH?"url(#sliceGlow)":"none"}
-                style={{cursor:"pointer",transition:"d .22s cubic-bezier(.22,1,.36,1),filter .15s",opacity:animated?1:0,transformOrigin:`${cx}px ${cy}px`}}
-                onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
-              />
-            );
-          })}
-          <circle cx={cx} cy={cy} r={innerR+1} fill="rgba(0,0,0,0.35)"/>
-          <circle cx={cx} cy={cy} r={innerR} fill="#0B0D15"/>
-        </svg>
-        {/* Merkez */}
-        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",transition:"all .2s"}}>
-          {hsl ? (
-            <>
-              <div style={{width:28,height:28,borderRadius:7,background:hsl.color+"22",border:`1px solid ${hsl.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:hsl.color,marginBottom:4,fontFamily:"'Inter',sans-serif"}}>{hsl.name.charAt(0)}</div>
-              <div style={{fontSize:11,color:"#6B6F8A",marginBottom:2,fontFamily:"'Inter',sans-serif"}}>{hsl.name}</div>
-              <div style={{fontSize:24,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:hsl.color,lineHeight:1}}>{total>0?((hsl.value/total)*100).toFixed(1):0}%</div>
-              <div style={{fontSize:10,color:"#4A4D65",marginTop:3,fontFamily:"'JetBrains Mono',monospace"}}>{total>0?(hsl.value>=1000?"$"+(hsl.value/1000).toFixed(1)+"K":"$"+hsl.value.toFixed(0)):""}</div>
-            </>
-          ) : (
-            <>
-              <div style={{fontSize:9,color:"#4A4D65",marginBottom:2,fontFamily:"'Inter',sans-serif",textTransform:"uppercase",letterSpacing:1}}>Toplam</div>
-              <div style={{fontSize:16,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"#E8E9ED"}}>{total>=1000000?"$"+(total/1000000).toFixed(2)+"M":total>=1000?"$"+(total/1000).toFixed(1)+"K":"$"+total.toFixed(0)}</div>
-              <div style={{fontSize:9,color:"#4A4D65",marginTop:3,fontFamily:"'Inter',sans-serif"}}>{data.length} varlık</div>
-            </>
-          )}
-        </div>
-      </div>
-      {/* Legend */}
-      <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:4,maxHeight:210,overflowY:"auto"}}>
-        {slices.map((item,i)=>{
-          const pct = total>0?(item.value/total)*100:0;
-          const isH = hovered===i;
-          return (
-            <div key={i} onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
-              style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:8,background:isH?item.color+"12":"transparent",border:`1px solid ${isH?item.color+"33":"transparent"}`,cursor:"pointer",transition:"all .15s"}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:item.color,flexShrink:0,boxShadow:isH?`0 0 8px ${item.color}`:"none",transition:"box-shadow .2s"}}/>
-              <span style={{flex:1,fontSize:12,color:isH?"#E8E9ED":"#8B8EA0",fontWeight:isH?600:400,fontFamily:"'Inter',sans-serif",transition:"color .15s",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.name}</span>
-              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                <div style={{width:44,height:3,background:"#1E2035",borderRadius:2,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:`${pct}%`,background:item.color,borderRadius:2,transition:"width .4s ease"}}/>
-                </div>
-                <span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:isH?item.color:"#4A4D65",fontWeight:600,minWidth:32,textAlign:"right",transition:"color .15s"}}>{pct.toFixed(1)}%</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
 const CoinPicker = ({ value, onChange, prices, savedKey, knownCoins, fmpStocks }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -127,7 +31,7 @@ const CoinPicker = ({ value, onChange, prices, savedKey, knownCoins, fmpStocks }
 
   useEffect(() => {
     const found = knownCoins.find(c => c.id === value);
-    if (found) { setSelected(found); setIsOpen(false); setQuery(""); }
+    if (found) setSelected(found);
   }, [value, knownCoins]);
 
   useEffect(() => {
@@ -736,6 +640,10 @@ export default function CryptoPortfolio() {
     try { localStorage.setItem("ip_theme", next); } catch(e) {}
   };
   const [tab, setTab] = useState("overview");
+  const [newsFilter, setNewsFilter] = useState("portfolio");
+  const [newsData, setNewsData] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsLoaded, setNewsLoaded] = useState(false);
   // ═══ TRADE JOURNAL STATE ═══
   const [trades, setTrades] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_trades") || "[]"); } catch(e) { return []; } });
   const [tradeView, setTradeView] = useState("list"); // list | add | analytics | goals
@@ -744,195 +652,15 @@ export default function CryptoPortfolio() {
   const [tradeKasa, setTradeKasa] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_kasa") || "5000"); } catch(e) { return 5000; } });
   const [goals, setGoals] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_goals") || "[]"); } catch(e) { return []; } });
   const [editTrade, setEditTrade] = useState(null);
-
-  // ── İşlem Geçmişi (Alış/Satış) ──
-  const [transactions, setTransactions] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_transactions") || "{}"); } catch(e) { return {}; } });
-  const [showTxModal, setShowTxModal] = useState(false);
-  const [txCoinId, setTxCoinId] = useState(null);
-  const [newTxType, setNewTxType] = useState("buy");
-  const [newTxAmount, setNewTxAmount] = useState("");
-  const [newTxPrice, setNewTxPrice] = useState("");
-  const [newTxDate, setNewTxDate] = useState(new Date().toISOString().slice(0,16));
-
-  // ── Trade Sembol Autocomplete ──
-  const [symQ, setSymQ] = useState("");
-  const [symOpen, setSymOpen] = useState(false);
-  const [symResults, setSymResults] = useState([]);
-  const symRef = useRef(null);
-
-  // ── Haber Akışı ──
-  const [newsData, setNewsData] = useState([]);
-  const [newsLoading, setNewsLoading] = useState(false);
-  const [newsCategory, setNewsCategory] = useState("all");
-  const [newsFilter, setNewsFilter] = useState("portfolio"); // portfolio | all | coin
-  const [newsLoaded, setNewsLoaded] = useState(false);
-
-  // ── Hedef Fiyat & Stop-Loss (Add Modal) ──
-  const [ncTargetPrice, setNcTargetPrice] = useState("");
-  const [ncStopLoss, setNcStopLoss] = useState("");
-
-  // ── Benchmark ──
-  const [benchmarkPeriod, setBenchmarkPeriod] = useState("7d");
-
-  const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
+  const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
 
   // Trade localStorage sync
   useEffect(() => { try { localStorage.setItem("ip_trades", JSON.stringify(trades)); } catch(e) {} }, [trades]);
   useEffect(() => { try { localStorage.setItem("ip_trade_kasa", String(tradeKasa)); } catch(e) {} }, [tradeKasa]);
   useEffect(() => { try { localStorage.setItem("ip_goals", JSON.stringify(goals)); } catch(e) {} }, [goals]);
-  useEffect(() => { try { localStorage.setItem("ip_transactions", JSON.stringify(transactions)); } catch(e) {} }, [transactions]);
-
-  // Sembol autocomplete dışarı tıklanınca kapat
-  useEffect(() => {
-    const h = (e) => { if (symRef.current && !symRef.current.contains(e.target)) setSymOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-
-  // Modal açıldığında tx form state'lerini sıfırla + fiyatı doldur
-  useEffect(() => {
-    if (showTxModal && txCoinId) {
-      setNewTxType("buy");
-      setNewTxAmount("");
-      const cp = prices[txCoinId]?.usd || 0;
-      setNewTxPrice(cp > 0 ? (cp < 1 ? cp.toFixed(6) : cp.toFixed(2)) : "");
-      setNewTxDate(new Date().toISOString().slice(0,16));
-    }
-  }, [showTxModal, txCoinId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Haber Akışı Fetch ──
-  const fetchNews = useCallback(async (filterMode = "portfolio", customCoins = null) => {
-    setNewsLoading(true);
-    setNewsLoaded(false);
-
-    // Portföydeki tüm coin sembollerini çek
-    const portfolioCoins = [...new Set(
-      Object.values(portfolios).flat().map(p => {
-        const coin = knownCoins.find(c => c.id === p.coinId);
-        return coin?.symbol?.toUpperCase();
-      }).filter(Boolean)
-    )].slice(0, 20);
-
-    const coinsToFetch = customCoins || (filterMode === "portfolio" ? portfolioCoins : []);
-    const currenciesParam = coinsToFetch.length > 0 ? coinsToFetch.join(",") : "";
-
-    const normalize = (articles) => articles.map(a => ({
-      ...a,
-      isPortfolio: portfolioCoins.some(s => {
-        const title = a.title ? a.title.toUpperCase() : "";
-        const curs = Array.isArray(a.currencies) ? a.currencies : [];
-        return title.includes(s) || curs.includes(s);
-      }),
-    }));
-
-    // ── Kaynak 1: Vercel proxy (tüm kaynakları dener) ──
-    try {
-      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-      const params = new URLSearchParams({ limit: "50" });
-      if (currenciesParam) params.set("currencies", currenciesParam);
-      const r = await fetch(`${baseUrl}/api/news?${params}`, { signal: AbortSignal.timeout(12000) });
-      if (r.ok) {
-        const data = await r.json();
-        if (data?.articles?.length > 0) {
-          setNewsData(normalize(data.articles));
-          setNewsLoaded(true);
-          setNewsLoading(false);
-          return;
-        }
-      }
-    } catch(e) {}
-
-    // ── Kaynak 2: CryptoPanic direkt (browser CORS açık) ──
-    try {
-      const curParam = currenciesParam ? `&currencies=${encodeURIComponent(currenciesParam)}` : "";
-      const r = await fetch(
-        `https://cryptopanic.com/api/free/v1/posts/?auth_token=FREE&public=true&kind=news${curParam}`,
-        { signal: AbortSignal.timeout(10000) }
-      );
-      if (r.ok) {
-        const d = await r.json();
-        if (d?.results?.length > 0) {
-          const articles = d.results.map(a => ({
-            id: String(a.id),
-            title: a.title,
-            body: a.metadata?.description?.slice(0, 280) || "",
-            url: a.url,
-            imageUrl: a.metadata?.image || "",
-            source: a.source?.title || a.domain || "CryptoPanic",
-            publishedAt: new Date(a.published_at).getTime(),
-            currencies: (a.currencies || []).map(c => c.code),
-            sentiment: a.votes?.positive > a.votes?.negative ? "bullish"
-                     : a.votes?.negative > a.votes?.positive ? "bearish" : "neutral",
-          }));
-          setNewsData(normalize(articles));
-          setNewsLoaded(true);
-          setNewsLoading(false);
-          return;
-        }
-      }
-    } catch(e) {}
-
-    // ── Kaynak 3: CryptoCompare direkt ──
-    try {
-      const catParam = currenciesParam ? `&categories=${encodeURIComponent(currenciesParam)}` : "";
-      const r = await fetch(
-        `https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest${catParam}`,
-        { signal: AbortSignal.timeout(10000) }
-      );
-      if (r.ok) {
-        const d = await r.json();
-        if (d?.Data?.length > 0) {
-          const articles = d.Data.slice(0, 40).map(a => ({
-            id: String(a.id),
-            title: a.title,
-            body: a.body?.slice(0, 280) || "",
-            url: a.url,
-            imageUrl: a.imageurl || "",
-            source: a.source_info?.name || a.source || "CryptoCompare",
-            publishedAt: (a.published_on || 0) * 1000,
-            currencies: (a.categories || "").split("|").map(s => s.trim()).filter(Boolean),
-            sentiment: a.body?.toLowerCase().includes("bullish") ? "bullish"
-                     : a.body?.toLowerCase().includes("bearish") ? "bearish" : "neutral",
-          }));
-          setNewsData(normalize(articles));
-          setNewsLoaded(true);
-          setNewsLoading(false);
-          return;
-        }
-      }
-    } catch(e) {}
-
-    // ── Kaynak 4: CoinGecko News ──
-    try {
-      const r = await fetch(
-        `https://api.coingecko.com/api/v3/news?per_page=50`,
-        { signal: AbortSignal.timeout(10000) }
-      );
-      if (r.ok) {
-        const d = await r.json();
-        if (Array.isArray(d) && d.length > 0) {
-          const articles = d.map(a => ({
-            id: String(a.id || Math.random()),
-            title: a.title,
-            body: a.description?.slice(0, 280) || "",
-            url: a.url,
-            imageUrl: a.thumb_2x || a.thumb || "",
-            source: a.author || "CoinGecko",
-            publishedAt: new Date(a.updated_at || Date.now()).getTime(),
-            currencies: [],
-            sentiment: "neutral",
-          }));
-          setNewsData(normalize(articles));
-          setNewsLoaded(true);
-        }
-      }
-    } catch(e) {}
-
-    setNewsLoading(false);
-  }, [portfolios, knownCoins]);
 
   // Trade helper functions
-  const calcPnl = (t) => { if (!t.entryPrice || !t.exitPrice) return 0; const e=parseFloat(t.entryPrice),x=parseFloat(t.exitPrice),a=parseFloat(t.amount)||parseFloat(t.entry1Amount||0)+parseFloat(t.entry2Amount||0)+parseFloat(t.entry3Amount||0)||100,l=parseFloat(t.leverage)||1; return t.direction==="Long"?(x-e)/e*a*l:(e-x)/e*a*l; };
+  const calcPnl = (t) => { if (!t.entryPrice || !t.exitPrice) return 0; const e=parseFloat(t.entryPrice),x=parseFloat(t.exitPrice),a=parseFloat(t.amount)||100,l=parseFloat(t.leverage)||1; return t.direction==="Long"?(x-e)/e*a*l:(e-x)/e*a*l; };
   const calcPnlPct = (t) => { if (!t.entryPrice || !t.exitPrice) return 0; const e=parseFloat(t.entryPrice),x=parseFloat(t.exitPrice),l=parseFloat(t.leverage)||1; return t.direction==="Long"?(x-e)/e*100*l:(e-x)/e*100*l; };
   const closedTrades = trades.filter(t=>t.status==="Kapali");
   const winTrades = closedTrades.filter(t=>calcPnl(t)>0);
@@ -944,7 +672,7 @@ export default function CryptoPortfolio() {
   const profitFactor = avgLoss>0?(avgWin*winTrades.length)/(avgLoss*lossTrades.length):0;
   const maxDrawdown = (() => { let peak=0,dd=0,maxDd=0; closedTrades.sort((a,b)=>new Date(a.exitDate)-new Date(b.exitDate)).forEach(t=>{const eq=peak+calcPnl(t);if(eq>peak)peak=eq;dd=peak-eq;if(dd>maxDd)maxDd=dd;}); return maxDd; })();
 
-  const resetNewTrade = () => { setSymQ(""); setSymOpen(false); setSymResults([]); setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",stopLoss:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""}); };
+  const resetNewTrade = () => setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
 
   const saveTrade = () => {
     const t = editTrade !== null ? {...newTrade, id: trades[editTrade].id} : {...newTrade, id: Date.now()};
@@ -1032,24 +760,91 @@ export default function CryptoPortfolio() {
   const retryRef = useRef(null);
 
   const log = useCallback((type,ok,detail)=>setReqLog(p=>[{time:new Date(),type,success:ok,detail},...p.slice(0,49)]),[]);
+  // ── Haber Akışı ──
+  const fetchNews = useCallback(async (filterMode) => {
+    setNewsLoading(true);
+    const coins = [...new Set(
+      Object.values(portfolios).flat().map(p => {
+        const nc = knownCoins.find(x => x.id === p.coinId);
+        return nc && nc.symbol ? nc.symbol.toUpperCase() : null;
+      }).filter(Boolean)
+    )].slice(0, 15);
+    const currStr = filterMode === "portfolio" ? coins.join(",") : "";
+    const mapArticle = (a, src) => ({
+      id: String(a.id || Math.random()),
+      title: a.title || "",
+      body: (a.body || a.description || a.metadata && a.metadata.description || "").slice(0, 280),
+      url: a.url || "#",
+      imageUrl: a.imageurl || a.thumb_2x || a.thumb || (a.metadata && a.metadata.image) || "",
+      source: (a.source_info && a.source_info.name) || a.source || (a.source && a.source.title) || src,
+      publishedAt: a.published_on ? a.published_on * 1000 : (a.published_at ? new Date(a.published_at).getTime() : Date.now()),
+      currencies: Array.isArray(a.currencies) ? a.currencies.map(x => x.code || x) : (a.categories || "").split("|").map(s => s.trim()).filter(Boolean),
+      sentiment: "neutral",
+      isPortfolio: false,
+    });
+    const markPortfolio = (articles) => articles.map(a => ({
+      ...a,
+      isPortfolio: coins.some(s => {
+        const ttl = a.title ? a.title.toUpperCase() : "";
+        const curs = Array.isArray(a.currencies) ? a.currencies : [];
+        return ttl.includes(s) || curs.includes(s);
+      }),
+    }));
+    try {
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const params = currStr ? "?currencies=" + encodeURIComponent(currStr) + "&limit=50" : "?limit=50";
+      const r = await fetch(baseUrl + "/api/news" + params, { signal: AbortSignal.timeout(12000) });
+      if (r.ok) {
+        const d = await r.json();
+        if (d && d.articles && d.articles.length > 0) {
+          setNewsData(markPortfolio(d.articles));
+          setNewsLoaded(true);
+          setNewsLoading(false);
+          return;
+        }
+      }
+    } catch(e) {}
+    try {
+      const catQ = currStr ? "&categories=" + encodeURIComponent(currStr) : "";
+      const r = await fetch("https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest" + catQ, { signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const d = await r.json();
+        if (d && d.Data && d.Data.length > 0) {
+          const arts = d.Data.slice(0, 40).map(a => mapArticle(a, "CryptoCompare"));
+          setNewsData(markPortfolio(arts));
+          setNewsLoaded(true);
+          setNewsLoading(false);
+          return;
+        }
+      }
+    } catch(e) {}
+    try {
+      const r = await fetch("https://cryptopanic.com/api/free/v1/posts/?auth_token=FREE&public=true&kind=news" + (currStr ? "&currencies=" + encodeURIComponent(currStr) : ""), { signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const d = await r.json();
+        if (d && d.results && d.results.length > 0) {
+          const arts = d.results.map(a => mapArticle(a, "CryptoPanic"));
+          setNewsData(markPortfolio(arts));
+          setNewsLoaded(true);
+        }
+      }
+    } catch(e) {}
+    setNewsLoading(false);
+  }, [portfolios, knownCoins]);
 
-  // Save to localStorage on change + Firebase sync
+
   useEffect(() => {
     try { localStorage.setItem("ip_portfolios", JSON.stringify(portfolios)); } catch(e) {}
     const fu = firebaseUserRef.current;
-    if (fu && !fu.isAnonymous && dataLoadedRef.current) {
-      savePortfolios(fu.uid, portfolios, sections);
-    }
-  }, [portfolios]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (fu && !fu.isAnonymous && dataLoadedRef.current) { savePortfolios(fu.uid, portfolios, sections); }
+  }, [portfolios]); // eslint-disable-line
   useEffect(() => { try { localStorage.setItem("ip_activePortfolio", activePortfolio); } catch(e) {} }, [activePortfolio]);
   useEffect(() => { try { localStorage.setItem("ip_knownCoins", JSON.stringify(knownCoins)); } catch(e) {} }, [knownCoins]);
   useEffect(() => {
     try { localStorage.setItem("ip_sections", JSON.stringify(sections)); } catch(e) {}
     const fu = firebaseUserRef.current;
-    if (fu && !fu.isAnonymous && dataLoadedRef.current) {
-      savePortfolios(fu.uid, portfolios, sections);
-    }
-  }, [sections]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (fu && !fu.isAnonymous && dataLoadedRef.current) { savePortfolios(fu.uid, portfolios, sections); }
+  }, [sections]); // eslint-disable-line
 
   const buildUrl = useCallback((path,params="")=>{
     const base=savedKey?"https://pro-api.coingecko.com/api/v3":"https://api.coingecko.com/api/v3";
@@ -1495,8 +1290,7 @@ export default function CryptoPortfolio() {
   },[resolveBinancePrice,chartPeriod,prices,buildUrl,log]);
 
   useEffect(()=>{fetchPrices();return()=>{if(retryRef.current)clearTimeout(retryRef.current);};},[]);
-  // Haberler sekmesine geçince otomatik yükle
-  useEffect(()=>{ if(tab==="news" && !newsLoaded && !newsLoading) fetchNews("portfolio"); },[tab]); // eslint-disable-line
+  useEffect(()=>{ if(tab==="news"&&!newsLoaded&&!newsLoading) fetchNews("portfolio"); },[tab]); // eslint-disable-line
   useEffect(()=>{if(intRef.current)clearInterval(intRef.current);intRef.current=setInterval(()=>{if(connStatus!=="retrying"&&connStatus!=="ratelimited")fetchPrices();},refreshInterval);return()=>{if(intRef.current)clearInterval(intRef.current);};},[refreshInterval,connStatus,fetchPrices]);
 
   // FMP tüm hisse listesi — startup'ta çek, 24 saat cache'le
@@ -1543,29 +1337,24 @@ export default function CryptoPortfolio() {
       setKnownCoins(prev => [...prev, { id: coinId, symbol: ncCoin.symbol, name: ncCoin.name, market: ncCoin.market, currency: ncCoin.currency }]);
     }
 
-    const targetPrice = parseFloat(ncTargetPrice) || 0;
-    const stopLoss = parseFloat(ncStopLoss) || 0;
-
     if (editIdx !== null) {
-      setPortfolio(p => p.map((it, i) => i === editIdx ? { coinId, amount: +ncAmount, buyPrice: +ncBuyPrice, section, targetPrice, stopLoss } : it));
+      setPortfolio(p => p.map((it, i) => i === editIdx ? { coinId, amount: +ncAmount, buyPrice: +ncBuyPrice, section } : it));
       setEditIdx(null);
     } else {
-      setPortfolio(p => [...p, { coinId, amount: +ncAmount, buyPrice: +ncBuyPrice, section, targetPrice, stopLoss }]);
-      // İşlem geçmişine ekle
-      const txRecord = { id: Date.now(), type: "buy", amount: +ncAmount, price: +ncBuyPrice, date: new Date().toISOString(), total: +ncAmount * +ncBuyPrice };
-      setTransactions(prev => ({ ...prev, [coinId]: [...(prev[coinId] || []), txRecord] }));
+      setPortfolio(p => [...p, { coinId, amount: +ncAmount, buyPrice: +ncBuyPrice, section }]);
     }
 
     // Fetch price if not available — different strategy for stocks vs crypto
     if (!prices[coinId]) {
       if (isStock(coinId)) {
+        // Trigger a full fetchPrices which includes stock fetching
         fetchPrices();
       } else {
         fetchCoinPrice(coinId);
       }
     }
 
-    setNcCoin(null); setNcAmount(""); setNcBuyPrice(""); setNcSection("Genel"); setNcTargetPrice(""); setNcStopLoss("");
+    setNcCoin(null); setNcAmount(""); setNcBuyPrice(""); setNcSection("Genel");
     setShowAdd(false);
   };
 
@@ -1899,28 +1688,28 @@ export default function CryptoPortfolio() {
   const curChart=chartData[`${selChart}-${chartPeriod}`]||[];
   const st={card:{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:14,padding:20,overflow:"hidden",backdropFilter:"blur(10px)"},th:{padding:"10px 12px",fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:.8,fontWeight:600,textAlign:"left",borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"},td:{padding:"11px 12px",fontSize:13,borderBottom:`1px solid ${T.border}`,verticalAlign:"middle"},tt:{background:T.bgInput,border:`1px solid ${T.borderLight}`,borderRadius:8,color:T.text,fontSize:12,fontFamily:"'JetBrains Mono',monospace"}};
 
-  // ── News hesaplamaları (IIFE yerine) ──
+  // ── Haberler için computed ──
   const newsPortfolioCoins = [...new Set(
     Object.values(portfolios).flat().map(p => {
-      const c = knownCoins.find(x => x.id === p.coinId);
-      return c?.symbol?.toUpperCase();
+      const nc = knownCoins.find(x => x.id === p.coinId);
+      return nc && nc.symbol ? nc.symbol.toUpperCase() : null;
     }).filter(Boolean)
   )].slice(0, 15);
 
   const newsFiltered = newsFilter === "portfolio"
     ? newsData.filter(a => {
         if (a.isPortfolio) return true;
-        const title = a.title ? a.title.toUpperCase() : "";
+        const ttl = a.title ? a.title.toUpperCase() : "";
         const curs = Array.isArray(a.currencies) ? a.currencies : [];
-        return newsPortfolioCoins.some(s => title.includes(s) || curs.includes(s));
+        return newsPortfolioCoins.some(s => ttl.includes(s) || curs.includes(s));
       })
     : newsData;
 
   const newsTimeAgo = (ts) => {
     const d = (Date.now() - ts) / 1000;
-    if (d < 3600) return Math.floor(d / 60) + " dk önce";
-    if (d < 86400) return Math.floor(d / 3600) + " sa önce";
-    return Math.floor(d / 86400) + " gün önce";
+    if (d < 3600) return Math.floor(d/60) + " dk önce";
+    if (d < 86400) return Math.floor(d/3600) + " sa önce";
+    return Math.floor(d/86400) + " gün önce";
   };
 
   if (showSplash) return <SplashScreen onFinish={() => setShowSplash(false)} />;
@@ -1957,7 +1746,7 @@ export default function CryptoPortfolio() {
       {isLoading&&<div style={{width:"100%",height:2,background:T.border,overflow:"hidden"}}><div style={{height:"100%",background:`linear-gradient(90deg,${T.accent},${T.gold},${T.accent})`,backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite linear"}}/></div>}
       <nav style={{display:"flex",gap:4,padding:"10px 24px",borderBottom:`1px solid ${T.border}`,overflowX:"auto",background:T.bgSecondary}}>
         {[{id:"overview",lbl:"Dashboard",ic:"⊞"},{id:"portfolio",lbl:"Portföy",ic:"◎"},{id:"trade",lbl:"Trade",ic:"📈"},{id:"news",lbl:"Haberler",ic:"📰"},{id:"reports",lbl:"Raporlar",ic:"📄"}].map(t=>
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"9px 18px",background:tab===t.id?T.accentGlow:"transparent",border:tab===t.id?`1px solid ${T.accent}33`:"1px solid transparent",color:tab===t.id?T.accent:T.textMuted,fontSize:13,fontWeight:tab===t.id?600:500,cursor:"pointer",borderRadius:8,display:"flex",alignItems:"center",gap:6,fontFamily:"'Inter',sans-serif",position:"relative",whiteSpace:"nowrap",transition:"all .25s cubic-bezier(.22,1,.36,1)",transform:tab===t.id?"scale(1.02)":"scale(1)"}}>
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"9px 18px",background:tab===t.id?T.accentGlow:"transparent",border:tab===t.id?`1px solid ${T.accent}33`:"1px solid transparent",color:tab===t.id?T.accent:T.textMuted,fontSize:13,fontWeight:tab===t.id?600:500,cursor:"pointer",borderRadius:8,display:"flex",alignItems:"center",gap:6,fontFamily:"'Inter',sans-serif",position:"relative",whiteSpace:"nowrap",transition:"all .2s"}}>
             <span style={{fontSize:16}}>{t.ic}</span>{t.lbl}
           </button>)}
       </nav>
@@ -1974,7 +1763,7 @@ export default function CryptoPortfolio() {
         </div>}
 
         {/* ═══ PORTFOLIO ═══ */}
-        {tab==="portfolio"&&<div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
+        {tab==="portfolio"&&<div style={{animation:"fadeUp .4s ease-out"}}>
           {/* Portfolio Selector Bar */}
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap",position:"relative"}}>
             <div style={{display:"flex",gap:4,flex:1,overflowX:"auto",paddingBottom:4}}>
@@ -2035,10 +1824,9 @@ export default function CryptoPortfolio() {
           </div>
           <div style={{display:"grid",gridTemplateColumns:pieData.length>0?"260px 1fr":"1fr",gap:18}}>
             <div style={st.card}>
-              <h3 style={{fontSize:14,fontWeight:600,marginBottom:16}}>Dağılım</h3>
-              {pieData.length>0
-                ? <DonutChart data={pieData} total={totVal} themeColors={T}/>
-                : <div style={{textAlign:"center",padding:40,color:T.textMuted}}>Portföye varlık ekleyin</div>}
+              <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Dağılım</h3>
+              {pieData.length>0?<><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">{pieData.map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip formatter={v=>fmt(v)} contentStyle={st.tt}/></PieChart></ResponsiveContainer>
+              <div style={{marginTop:8}}>{pieData.map((item,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${T.bgCardSolid}`}}><span style={{width:8,height:8,borderRadius:2,background:item.color,flexShrink:0}}/><span style={{flex:1,fontSize:12,color:T.textSecondary}}>{item.name}</span><span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>{totVal>0?((item.value/totVal)*100).toFixed(1):0}%</span></div>)}</div></>:<div style={{textAlign:"center",padding:40,color:T.textMuted}}>Portföye varlık ekleyin</div>}
             </div>
             <div style={st.card}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h3 style={{fontSize:15,fontWeight:600}}>Varlıklar</h3><button onClick={()=>{setEditIdx(null);setNcCoin(null);setNcAmount("");setNcBuyPrice("");setNcSection("Genel");setShowAdd(true);}} style={{padding:"7px 14px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:8,color:T.text,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Ekle</button></div>
@@ -2046,24 +1834,24 @@ export default function CryptoPortfolio() {
                 {pData.length===0?<div style={{textAlign:"center",padding:40,color:T.textMuted}}><div style={{fontSize:48,marginBottom:12}}>📊</div>Henüz varlık yok</div>:
                 <table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>{["","Coin","Fiyat","24s","Miktar","Değer","Ağırlık","K/Z","İşlem"].map((h,i)=><th key={i} style={{...st.th,textAlign:i<=1?"left":i===8?"center":"right",width:i===0?30:undefined}}>{h}</th>)}</tr></thead><tbody>
                 {(()=>{
-                  var grouped = {};
+                  const grouped = {};
                   pData.forEach((item, i) => {
-                    var sec = item.section || "Genel";
+                    const sec = item.section || "Genel";
                     if (!grouped[sec]) grouped[sec] = [];
                     grouped[sec].push({ ...item, origIdx: i });
                   });
-                  var sectionOrder = sections.filter(s => grouped[s]);
+                  const sectionOrder = sections.filter(s => grouped[s]);
                   Object.keys(grouped).forEach(s => { if (!sectionOrder.includes(s)) sectionOrder.push(s); });
                   // Also show empty sections as drop targets
                   sections.forEach(s => { if (!sectionOrder.includes(s)) sectionOrder.push(s); });
 
-                  var rows = [];
+                  const rows = [];
                   sectionOrder.forEach((secName, si) => {
-                    var items = grouped[secName] || [];
-                    var secVal = items.reduce((s, it) => s + it.currentValue, 0);
-                    var secPnl = items.reduce((s, it) => s + it.pnl, 0);
-                    var secInv = items.reduce((s, it) => s + it.investedValue, 0);
-                    var isDropTarget = dragIdx !== null && dragOverSection === secName;
+                    const items = grouped[secName] || [];
+                    const secVal = items.reduce((s, it) => s + it.currentValue, 0);
+                    const secPnl = items.reduce((s, it) => s + it.pnl, 0);
+                    const secInv = items.reduce((s, it) => s + it.investedValue, 0);
+                    const isDropTarget = dragIdx !== null && dragOverSection === secName;
 
                     rows.push(
                       <tr key={`sec-${secName}`}
@@ -2079,7 +1867,7 @@ export default function CryptoPortfolio() {
                                   <input autoFocus value={editSectionValue} onChange={e=>setEditSectionValue(e.target.value)}
                                     onKeyDown={e=>{
                                       if(e.key==="Enter"&&editSectionValue.trim()){
-                                        var nv=editSectionValue.trim();
+                                        const nv=editSectionValue.trim();
                                         setSections(p=>p.map(s=>s===secName?nv:s));
                                         setPortfolio(p=>p.map(it=>it.section===secName?{...it,section:nv}:it));
                                         setEditSectionName(null);
@@ -2087,7 +1875,7 @@ export default function CryptoPortfolio() {
                                       if(e.key==="Escape") setEditSectionName(null);
                                     }}
                                     style={{padding:"4px 8px",background:T.bg,border:"1px solid #9333EA44",borderRadius:4,color:T.text,fontSize:14,fontWeight:700,outline:"none",fontFamily:"'Inter',sans-serif",width:160}}/>
-                                  <button onClick={()=>{var nv=editSectionValue.trim();if(nv){setSections(p=>p.map(s=>s===secName?nv:s));setPortfolio(p=>p.map(it=>it.section===secName?{...it,section:nv}:it));}setEditSectionName(null);}}
+                                  <button onClick={()=>{const nv=editSectionValue.trim();if(nv){setSections(p=>p.map(s=>s===secName?nv:s));setPortfolio(p=>p.map(it=>it.section===secName?{...it,section:nv}:it));}setEditSectionName(null);}}
                                     style={{padding:"3px 8px",background:"#9333EA22",border:"1px solid #9333EA44",borderRadius:4,color:"#9333EA",fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✓</button>
                                   <button onClick={()=>setEditSectionName(null)}
                                     style={{padding:"3px 8px",background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,borderRadius:4,color:T.textMuted,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✕</button>
@@ -2099,7 +1887,7 @@ export default function CryptoPortfolio() {
                                   <button onClick={()=>{setEditSectionName(secName);setEditSectionValue(secName);}}
                                     style={{width:22,height:22,border:`1px solid ${T.borderLight}`,background:T.bgCardSolid,color:T.textMuted,borderRadius:4,cursor:"pointer",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}} title="Yeniden adlandır">✎</button>
                                   {sections.length>1&&<button onClick={()=>{
-                                    var fallback=sections.find(s=>s!==secName)||"Kategorisiz";
+                                    const fallback=sections.find(s=>s!==secName)||"Kategorisiz";
                                     if(window.confirm(`"${secName}" kategorisini silmek istediğinize emin misiniz? İçindeki coinler "${fallback}" kategorisine taşınacak.`)){
                                       setPortfolio(p=>p.map(it=>it.section===secName?{...it,section:fallback}:it));
                                       setSections(p=>p.filter(s=>s!==secName));
@@ -2120,9 +1908,9 @@ export default function CryptoPortfolio() {
                     );
 
                     items.forEach((item) => {
-                      var i = item.origIdx;
-                      var pct = totVal > 0 ? (item.currentValue / totVal * 100) : 0;
-                      var isDragging = dragIdx === i;
+                      const i = item.origIdx;
+                      const pct = totVal > 0 ? (item.currentValue / totVal * 100) : 0;
+                      const isDragging = dragIdx === i;
                       rows.push(
                         <tr key={i} draggable
                           onDragStart={()=>setDragIdx(i)}
@@ -2136,32 +1924,7 @@ export default function CryptoPortfolio() {
                         <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{fmt(item.currentValue)}</td>
                         <td style={{...st.td,textAlign:"right"}}><div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end"}}><div style={{width:50,height:5,background:T.border,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:CLR[i%CLR.length],borderRadius:3}}/></div><span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:"#9333EA",fontWeight:600,minWidth:40,textAlign:"right"}}>{pct.toFixed(1)}%</span></div></td>
                         <td style={{...st.td,textAlign:"right"}}><div style={{color:item.pnl>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{item.pnl>=0?"+":""}{fmt(item.pnl)}</div><div style={{color:item.pnl>=0?`${T.green}aa`:`${T.red}aa`,fontSize:11}}>{fPct(item.pnlPct)}</div></td>
-                        <td style={{...st.td}}>
-                          {/* Target/SL göstergeleri */}
-                          {(item.targetPrice > 0 || item.stopLoss > 0) && (
-                            <div style={{display:"flex",flexDirection:"column",gap:3,marginBottom:4}}>
-                              {item.targetPrice > 0 && (
-                                <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>
-                                  <span style={{color:T.green}}>🎯</span>
-                                  <span style={{color:item.currentPrice>=item.targetPrice?T.green:T.textMuted}}>{fmt(item.targetPrice,item.targetPrice<1?4:2)}</span>
-                                  {item.currentPrice > 0 && <span style={{color:item.currentPrice>=item.targetPrice?T.green:"#EAB308",fontWeight:600}}>{item.currentPrice>=item.targetPrice?" ✓ Ulaşıldı!":" "+((item.targetPrice-item.currentPrice)/item.currentPrice*100).toFixed(1)+"% kaldı"}</span>}
-                                </div>
-                              )}
-                              {item.stopLoss > 0 && (
-                                <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>
-                                  <span style={{color:T.red}}>🛑</span>
-                                  <span style={{color:item.currentPrice<=item.stopLoss?T.red:T.textMuted}}>{fmt(item.stopLoss,item.stopLoss<1?4:2)}</span>
-                                  {item.currentPrice > 0 && item.currentPrice <= item.stopLoss && <span style={{color:T.red,fontWeight:700}}> ⚠ AŞILDI!</span>}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          <div style={{display:"flex",gap:4,justifyContent:"center"}}>
-                            <button onClick={()=>{setTxCoinId(item.coinId);setShowTxModal(true);}} title="İşlem Geçmişi" style={{width:28,height:28,border:`1px solid ${T.accent}44`,background:T.accentGlow,color:T.accent,borderRadius:6,cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>₿</button>
-                            <button onClick={()=>{var it=portfolio[i];var c=knownCoins.find(x=>x.id===it.coinId);setNcCoin(c||{id:it.coinId,symbol:"?",name:it.coinId});setNcAmount(""+it.amount);setNcBuyPrice(""+it.buyPrice);setNcSection(it.section||"Genel");setNcTargetPrice(""+( it.targetPrice||"" ));setNcStopLoss(""+( it.stopLoss||"" ));setEditIdx(i);setShowAdd(true);}} style={{width:28,height:28,border:`1px solid ${T.borderLight}`,background:T.bgCardSolid,color:T.textSecondary,borderRadius:6,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>✎</button>
-                            <button onClick={()=>setDelConfirm(i)} style={{width:28,height:28,border:`1px solid ${T.red}33`,background:T.redGlow,color:T.red,borderRadius:6,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-                          </div>
-                        </td></tr>
+                        <td style={{...st.td,textAlign:"center"}}><div style={{display:"flex",gap:6,justifyContent:"center"}}><button onClick={()=>{const it=portfolio[i];const c=knownCoins.find(x=>x.id===it.coinId);setNcCoin(c||{id:it.coinId,symbol:"?",name:it.coinId});setNcAmount(""+it.amount);setNcBuyPrice(""+it.buyPrice);setNcSection(it.section||"Genel");setEditIdx(i);setShowAdd(true);}} style={{width:28,height:28,border:`1px solid ${T.borderLight}`,background:T.bgCardSolid,color:T.textSecondary,borderRadius:6,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>✎</button><button onClick={()=>setDelConfirm(i)} style={{width:28,height:28,border:`1px solid ${T.red}33`,background:T.redGlow,color:T.red,borderRadius:6,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div></td></tr>
                       );
                     });
                   });
@@ -2174,19 +1937,19 @@ export default function CryptoPortfolio() {
         </div>}
 
         {/* ═══ DASHBOARD ═══ */}
-        {tab==="overview"&&<div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
+        {tab==="overview"&&<div style={{animation:"fadeUp .4s ease-out"}}>
           {/* Summary Cards */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,marginBottom:20}}>
-            <div style={{...st.card,background:T.gradientHero,border:`1px solid ${T.accent}22`,animation:"bounceIn .5s cubic-bezier(.22,1,.36,1) both"}}><div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:8,fontWeight:500}}>Toplam Değer</div><div style={{fontSize:28,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{isLoading?<span style={{display:"inline-block",width:120,height:28,background:T.border,borderRadius:6,animation:"skeletonPulse 1.5s infinite"}}/>:fmt(allTotVal)}</div><div style={{fontSize:13,marginTop:6,fontFamily:"'JetBrains Mono',monospace",color:allTot24h>=0?T.green:T.red}}>{isLoading?"":`${allTot24h>=0?"▲":"▼"} ${fmt(Math.abs(allTot24h))} (24s)`}</div></div>
+            <div style={{...st.card,background:T.gradientHero,border:`1px solid ${T.accent}22`}}><div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:8,fontWeight:500}}>Toplam Değer</div><div style={{fontSize:28,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{isLoading?<span style={{display:"inline-block",width:120,height:28,background:T.border,borderRadius:6,animation:"skeletonPulse 1.5s infinite"}}/>:fmt(allTotVal)}</div><div style={{fontSize:13,marginTop:6,fontFamily:"'JetBrains Mono',monospace",color:allTot24h>=0?T.green:T.red}}>{isLoading?"":`${allTot24h>=0?"▲":"▼"} ${fmt(Math.abs(allTot24h))} (24s)`}</div></div>
             <div style={st.card}><div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Toplam Yatırım</div><div style={{fontSize:20,fontWeight:700,fontFamily:"'Inter',monospace"}}>{isLoading?<span style={{display:"inline-block",width:100,height:20,background:T.border,borderRadius:6,animation:"skeletonPulse 1.5s infinite"}}/>:fmt(allTotInv)}</div></div>
             <div style={st.card}><div style={{fontSize:11,color:T.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Kar / Zarar</div><div style={{fontSize:20,fontWeight:700,fontFamily:"'Inter',monospace",color:allTotPnl>=0?T.green:T.red}}>{isLoading?<span style={{display:"inline-block",width:100,height:20,background:T.border,borderRadius:6,animation:"skeletonPulse 1.5s infinite"}}/>:<>{allTotPnl>=0?"+":""}{fmt(allTotPnl)}</>}</div>{!isLoading&&<div style={{fontSize:12,marginTop:2,fontFamily:"'JetBrains Mono',monospace",color:allTotPnl>=0?T.green:T.red}}>{fPct(allTotPnlPct)}</div>}</div>
           </div>
 
           {/* Market Distribution Bar */}
           {(()=>{
-            var mktTotals={};
-            allPData.forEach(item=>{var m=getMarketType(item.coinId);mktTotals[m]=(mktTotals[m]||0)+item.currentValue;});
-            var mktE=Object.entries(mktTotals).sort((a,b)=>b[1]-a[1]);
+            const mktTotals={};
+            allPData.forEach(item=>{const m=getMarketType(item.coinId);mktTotals[m]=(mktTotals[m]||0)+item.currentValue;});
+            const mktE=Object.entries(mktTotals).sort((a,b)=>b[1]-a[1]);
             if(mktE.length===0) return null;
             return(<div style={{...st.card,marginBottom:20,padding:16}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
@@ -2201,51 +1964,9 @@ export default function CryptoPortfolio() {
             </div>);
           })()}
 
-          {/* ── Benchmark Karşılaştırma ── */}
-          {allPData.length > 0 && (() => {
-            const periods = [{v:"24h",l:"24 Saat"},{v:"7d",l:"7 Gün"}];
-            const assets = [
-              {id:"portfolio",name:"Portföyüm",color:"#9333EA",change:benchmarkPeriod==="24h"?allPData.reduce((s,i)=>s+i.currentValue*(i.change24h/100),0)/Math.max(allTotVal,1)*100:allTotPnlPct},
-              {id:"bitcoin",name:"BTC",color:"#F7931A",change:benchmarkPeriod==="24h"?prices["bitcoin"]?.usd_24h_change||0:prices["bitcoin"]?.usd_7d_change||0},
-              {id:"ethereum",name:"ETH",color:"#627EEA",change:benchmarkPeriod==="24h"?prices["ethereum"]?.usd_24h_change||0:prices["ethereum"]?.usd_7d_change||0},
-              {id:"solana",name:"SOL",color:"#9945FF",change:benchmarkPeriod==="24h"?prices["solana"]?.usd_24h_change||0:prices["solana"]?.usd_7d_change||0},
-            ].filter(a => a.id === "portfolio" || prices[a.id]);
-            const maxAbs = Math.max(...assets.map(a => Math.abs(a.change)), 1);
-            return (
-              <div style={{...st.card, marginBottom:20, padding:16, animation:"slideInRight .4s cubic-bezier(.22,1,.36,1) both"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                  <span style={{fontSize:13,fontWeight:700,color:T.text}}>📊 Benchmark Karşılaştırma</span>
-                  <div style={{display:"flex",gap:4}}>
-                    {periods.map(p=>(
-                      <button key={p.v} onClick={()=>setBenchmarkPeriod(p.v)} style={{padding:"4px 12px",background:benchmarkPeriod===p.v?T.accentGlow:"transparent",border:`1px solid ${benchmarkPeriod===p.v?T.accent+"44":T.border}`,color:benchmarkPeriod===p.v?T.accent:T.textMuted,fontSize:11,fontWeight:600,borderRadius:6,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>{p.l}</button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  {assets.map((a,i)=>{
-                    const isUp = a.change >= 0;
-                    const barW = Math.abs(a.change) / maxAbs * 100;
-                    const isPortfolio = a.id === "portfolio";
-                    return (
-                      <div key={a.id} style={{display:"flex",alignItems:"center",gap:12}}>
-                        <div style={{width:80,fontSize:12,fontWeight:isPortfolio?700:500,color:isPortfolio?a.color:T.textSecondary,flexShrink:0}}>{a.name}</div>
-                        <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
-                          <div style={{flex:1,height:isPortfolio?10:7,background:T.border,borderRadius:4,overflow:"hidden",position:"relative"}}>
-                            <div style={{position:"absolute",height:"100%",width:`${barW}%`,background:isUp?a.color:T.red,borderRadius:4,transition:"width 0.6s ease",opacity:isPortfolio?1:0.7}}/>
-                          </div>
-                          <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:isUp?T.green:T.red,minWidth:60,textAlign:"right"}}>{isUp?"+":""}{a.change.toFixed(2)}%</span>
-                        </div>
-                      </div>
-                  ))}
-                </div>
-                <div style={{marginTop:10,fontSize:10,color:T.textMuted}}>* Portföy: tüm zamanlık K/Z oranı · BTC/ETH/SOL: seçili dönem değişimi</div>
-              </div>
-            );
-          })()}
-
           {/* Portföy Kartları (sadece çoklu portföy varsa) */}
           {portfolioSummaries.length>1&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12,marginBottom:20}}>
-            {portfolioSummaries.map((ps,i)=>(<div key={ps.name} style={{...st.card,padding:16,cursor:"pointer",transition:"transform .2s, border-color .2s, box-shadow .2s",animation:`slideInLeft ${0.3+i*0.06}s cubic-bezier(.22,1,.36,1) both`}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(147,51,234,.12)";}} onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}} onClick={()=>{setActivePortfolio(ps.name);setTab("portfolio");}}>
+            {portfolioSummaries.map((ps,i)=>(<div key={ps.name} style={{...st.card,padding:16,cursor:"pointer",transition:"border-color .2s"}} onClick={()=>{setActivePortfolio(ps.name);setTab("portfolio");}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><span style={{fontSize:14,fontWeight:600}}>{ps.name}</span><span style={{fontSize:11,color:T.textMuted}}>{ps.count} varlık</span></div>
               <div style={{fontSize:20,fontWeight:700,fontFamily:"'Inter',monospace",color:T.text,marginBottom:4}}>{fmt(ps.value)}</div>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}><span style={{color:ps.pnl>=0?T.green:T.red}}>{ps.pnl>=0?"+":""}{fmt(ps.pnl)} ({fPct(ps.pnlPct)})</span><span style={{color:"#9333EA"}}>{allTotVal>0?(ps.value/allTotVal*100).toFixed(1):0}%</span></div>
@@ -2296,28 +2017,19 @@ export default function CryptoPortfolio() {
           {/* Dağılım + Tüm Varlıklar */}
           <div style={{display:"grid",gridTemplateColumns:allPData.length>0?"260px 1fr":"1fr",gap:18}}>
             {allPData.length>0&&<div style={st.card}>
-              <h3 style={{fontSize:14,fontWeight:600,marginBottom:16}}>Dağılım</h3>
-              <DonutChart data={allPieData} total={allTotVal} themeColors={T}/>
+              <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Dağılım</h3>
+              <ResponsiveContainer width="100%" height={200}><PieChart><Pie data={allPieData.slice(0,12)} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">{allPieData.slice(0,12).map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip formatter={v=>[fmt(v),""]} contentStyle={st.tt}/></PieChart></ResponsiveContainer>
+              <div style={{marginTop:8,maxHeight:180,overflowY:"auto"}}>{allPieData.map((item,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${T.bgCardSolid}`}}><span style={{width:8,height:8,borderRadius:2,background:item.color,flexShrink:0}}/><span style={{flex:1,fontSize:12,color:T.textSecondary}}>{item.name}</span><span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:"#9333EA"}}>{allTotVal>0?((item.value/allTotVal)*100).toFixed(1):0}%</span></div>)}</div>
             </div>}
             <div style={st.card}>
               <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Tüm Varlıklar</h3>
               <div style={{overflowX:"auto"}}>
                 {allPData.length===0?<div style={{textAlign:"center",padding:40,color:T.textMuted}}>Portföylere varlık ekleyin</div>:
-                <table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>{["Varlık","Miktar","Fiyat","24s","Değer","Ağırlık","K/Z"].map((h,i)=><th key={h} style={{...st.th,textAlign:i===0?"left":"right"}}>{h}</th>)}</tr></thead><tbody>
+                <table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>{["Varlık","Fiyat","24s","Değer","Ağırlık","K/Z"].map((h,i)=><th key={h} style={{...st.th,textAlign:i===0?"left":"right"}}>{h}</th>)}</tr></thead><tbody>
                 {allPData.map((item,i)=>{
                   const pct=allTotVal>0?(item.currentValue/allTotVal*100):0;const mc=getMarketColor(getMarketType(item.coinId));
-                  const fmtAmount = (n) => {
-                    if (!n) return "0";
-                    if (n >= 1000000) return (n/1000000).toFixed(2)+"M";
-                    if (n >= 1000) return (n/1000).toFixed(2)+"K";
-                    if (n < 0.0001) return n.toExponential(2);
-                    if (n < 1) return n.toFixed(6);
-                    if (n < 100) return n.toFixed(4);
-                    return n.toFixed(2);
-                  };
                   return(<tr key={item.coinId}>
                     <td style={st.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,fontFamily:"'Inter',monospace",background:mc+"18",color:mc}}>{item.coin?.symbol?.charAt(0)||"?"}</div><div><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:12}}>{item.coin?.name}</span><span style={{fontSize:8,padding:"1px 4px",borderRadius:2,background:mc+"15",color:mc,fontWeight:700}}>{getMarketLabel(getMarketType(item.coinId))}</span></div><div style={{fontSize:10,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{item.coin?.symbol}</div></div></div></td>
-                    <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:T.textSecondary}}>{fmtAmount(item.totalAmount)}</td>
                     <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{fmt(item.currentPrice,item.currentPrice<1?4:2)}</td>
                     <td style={{...st.td,textAlign:"right",color:item.change24h>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{fPct(item.change24h)}</td>
                     <td style={{...st.td,textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:12}}>{fmt(item.currentValue)}</td>
@@ -2333,7 +2045,7 @@ export default function CryptoPortfolio() {
         {/* ═══ REPORTS ═══ */}
 
         {/* ═══ TRADE JOURNAL ═══ */}
-        {tab==="trade"&&<div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
+        {tab==="trade"&&<div style={{animation:"fadeUp .4s ease-out"}}>
           {/* Trade Header */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
             <div>
@@ -2397,225 +2109,48 @@ export default function CryptoPortfolio() {
           </>}
 
           {/* ═══ ADD/EDIT TRADE ═══ */}
-          {tradeView==="add"&&<div style={{animation:"tabSwitch .3s cubic-bezier(.22,1,.36,1) both"}}>
-            {/* Canlı özet bar */}
-            {(newTrade.entryPrice||newTrade.symbol) && (
-              <div style={{marginBottom:16,padding:"12px 18px",background:T.accentGlow,border:`1px solid ${T.accent}22`,borderRadius:12,display:"flex",gap:16,alignItems:"center",flexWrap:"wrap",backdropFilter:"blur(8px)"}}>
-                {newTrade.symbol&&<div style={{display:"flex",alignItems:"center",gap:5}}>
-                  <span style={{fontSize:11,color:T.textMuted}}>Sembol:</span>
-                  <span style={{fontSize:13,fontWeight:700,color:T.text,fontFamily:"'JetBrains Mono',monospace"}}>{newTrade.symbol}</span>
-                </div>}
-                {newTrade.direction&&<span style={{fontSize:11,padding:"3px 10px",borderRadius:5,background:newTrade.direction==="Long"?T.greenGlow:T.redGlow,color:newTrade.direction==="Long"?T.green:T.red,fontWeight:700,border:`1px solid ${newTrade.direction==="Long"?T.green:T.red}22`}}>{newTrade.direction}</span>}
-                {newTrade.entryPrice&&<div style={{display:"flex",alignItems:"center",gap:5}}>
-                  <span style={{fontSize:11,color:T.textMuted}}>Giriş:</span>
-                  <span style={{fontSize:13,fontWeight:700,color:T.accent,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.entryPrice).toFixed(parseFloat(newTrade.entryPrice)<1?6:2)}</span>
-                </div>}
-                {newTrade.amount&&<div style={{display:"flex",alignItems:"center",gap:5}}>
-                  <span style={{fontSize:11,color:T.textMuted}}>Miktar:</span>
-                  <span style={{fontSize:13,fontWeight:700,color:T.textSecondary,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.amount).toFixed(0)}</span>
-                </div>}
-                {newTrade.stopLoss&&<div style={{display:"flex",alignItems:"center",gap:5}}>
-                  <span style={{fontSize:11,color:T.textMuted}}>SL:</span>
-                  <span style={{fontSize:12,fontWeight:700,color:T.red,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.stopLoss).toFixed(2)}</span>
-                </div>}
-                {newTrade.tp1&&<div style={{display:"flex",alignItems:"center",gap:5}}>
-                  <span style={{fontSize:11,color:T.textMuted}}>TP1:</span>
-                  <span style={{fontSize:12,fontWeight:700,color:T.green,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.tp1).toFixed(2)}</span>
-                </div>}
-                {newTrade.leverage&&newTrade.leverage!=="1x"&&<span style={{fontSize:11,padding:"3px 8px",borderRadius:5,background:T.goldGlow,color:T.gold,fontWeight:700,border:`1px solid ${T.gold}22`}}>{newTrade.leverage}</span>}
-                <div style={{marginLeft:"auto",fontSize:11,color:T.textMuted,display:"flex",alignItems:"center",gap:4}}>
-                  <span style={{width:7,height:7,borderRadius:"50%",background:newTrade.status==="Acik"?T.gold:T.green,display:"inline-block",boxShadow:`0 0 6px ${newTrade.status==="Acik"?T.gold:T.green}`}}/>
-                  {newTrade.status==="Acik"?"Açık Pozisyon":"Kapalı"}
+          {tradeView==="add"&&<div>
+            <div style={{display:"grid",gap:16}}>
+              {/* Risk Yönetimi */}
+              <div style={{...st.card,borderLeft:`3px solid ${T.gold}`}}>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>🛡 Risk Yönetimi</div>
+                <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Toplam Kasa (USDT)</div><input value={tradeKasa} onChange={e=>setTradeKasa(parseFloat(e.target.value)||0)} style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.gold,fontSize:14,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",outline:"none",width:150}} /></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Risk % (Kasanın)</div><div style={{display:"flex",gap:4}}>{["0.5","1","1.5","2","3","5"].map(r=><button key={r} onClick={()=>setNewTrade(p=>({...p,amount:String((tradeKasa*parseFloat(r)/100).toFixed(2))}))} style={{padding:"6px 10px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:6,color:T.text,fontSize:11,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace"}}>%{r}</button>)}</div></div>
                 </div>
               </div>
-            )}
-            <div style={{display:"grid",gap:14}}>
+
               {/* Trade Bilgileri */}
-              <div style={{...st.card,borderLeft:`3px solid ${T.accent}`,boxShadow:`inset 0 0 40px ${T.accent}05`,transition:"box-shadow .3s"}}>
+              <div style={{...st.card,borderLeft:`3px solid ${T.accent}`}}>
                 <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>📈 Trade Bilgileri</div>
-                {/* Sembol — autocomplete arama */}
-                <div style={{marginBottom:12}}>
-                  <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500,textTransform:"uppercase",letterSpacing:.5}}>Sembol Ara</div>
-                  <div ref={symRef} style={{position:"relative"}}>
-                    <input value={symQ||newTrade.symbol}
-                      onChange={e=>{
-                        const q=e.target.value;
-                        setSymQ(q);
-                        setNewTrade(p=>({...p,symbol:q.toUpperCase()}));
-                        if(!q||q.length<1){setSymResults([]);setSymOpen(false);return;}
-                        const ql=q.toLowerCase();
-                        const r=knownCoins.filter(c=>c.name.toLowerCase().includes(ql)||c.symbol.toLowerCase().includes(ql)).slice(0,8);
-                        setSymResults(r);
-                        setSymOpen(r.length>0);
-                      }}
-                      onFocus={()=>{if((symQ||newTrade.symbol).length>0&&symResults.length>0)setSymOpen(true);}}
-                      onBlur={()=>setTimeout(()=>setSymOpen(false),180)}
-                      placeholder="ETH, BTC/USDT, THYAO..."
-                      style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${symOpen?"#9333EA44":T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'Inter',sans-serif",transition:"border-color .2s"}}
-                    />
-                    {symOpen && symResults.length>0 && (
-                      <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,borderRadius:10,zIndex:200,boxShadow:"0 12px 40px rgba(0,0,0,.5)",maxHeight:240,overflowY:"auto"}}>
-                        {symResults.map((c,i)=>(
-                          <div key={c.id} onMouseDown={()=>{ setSymQ(c.symbol); setNewTrade(p=>({...p,symbol:c.symbol+"/USDT"})); setSymOpen(false); }}
-                            style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",cursor:"pointer",borderBottom:`1px solid ${T.border}`,transition:"background .15s"}}
-                            onMouseEnter={e=>e.currentTarget.style.background="#1E2035"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                            <div style={{width:28,height:28,borderRadius:7,background:"#9333EA18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#9333EA"}}>{c.symbol?.charAt(0)}</div>
-                            <div>
-                              <div style={{fontSize:13,fontWeight:600,color:T.text}}>{c.name}</div>
-                              <div style={{fontSize:11,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{c.symbol}</div>
-                            </div>
-                            {prices[c.id]?.usd>0&&<div style={{marginLeft:"auto",fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:T.textSecondary}}>${prices[c.id].usd<1?prices[c.id].usd.toFixed(4):prices[c.id].usd.toFixed(2)}</div>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Sembol</div><input value={newTrade.symbol} onChange={e=>setNewTrade(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="BTC/USDT" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'Inter',sans-serif"}} /></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Piyasa Türü</div><select value={newTrade.market} onChange={e=>setNewTrade(p=>({...p,market:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Kripto</option><option>Forex</option><option>Hisse</option><option>Emtia</option></select></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Borsa</div><select value={newTrade.exchange} onChange={e=>setNewTrade(p=>({...p,exchange:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Bybit</option><option>OKX</option><option>Dreamcash</option></select></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Durum</div><select value={newTrade.status} onChange={e=>setNewTrade(p=>({...p,status:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="Acik">Açık</option><option value="Kapali">Kapalı</option></select></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Yön</div><div style={{display:"flex",gap:6}}>{["Long","Short"].map(d=><button key={d} onClick={()=>setNewTrade(p=>({...p,direction:d}))} style={{flex:1,padding:"10px",background:newTrade.direction===d?(d==="Long"?"#22C55E18":"#EF444418"):T.bgInput,border:`1px solid ${newTrade.direction===d?(d==="Long"?"#22C55E44":"#EF444444"):T.border}`,borderRadius:8,color:newTrade.direction===d?(d==="Long"?"#22C55E":"#EF4444"):T.textMuted,fontSize:13,fontWeight:600,cursor:"pointer"}}>{d}</button>)}</div></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Durum</div><select value={newTrade.status} onChange={e=>setNewTrade(p=>({...p,status:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="Acik">Açık</option><option value="Kapali">Kapalı</option></select></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Kaldıraç</div><select value={newTrade.leverage} onChange={e=>setNewTrade(p=>({...p,leverage:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}>{["1x","2x","3x","5x","10x","20x","25x","50x","75x","100x","125x"].map(l=><option key={l}>{l}</option>)}</select></div>
                 </div>
               </div>
 
               {/* Fiyat & Pozisyon */}
-              <div style={{...st.card,borderLeft:`3px solid #3b82f6`,background:`linear-gradient(135deg,rgba(59,130,246,.04),${T.bgCardSolid})`,boxShadow:"inset 0 0 40px rgba(59,130,246,.03)"}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:16,display:"flex",alignItems:"center",gap:8}}>💲 Fiyat & Pozisyon</div>
-
-                {/* Çıkış fiyatı */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-                  <div>
-                    <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500}}>Çıkış Fiyatı</div>
-                    <input type="number" value={newTrade.exitPrice} onChange={e=>setNewTrade(p=>({...p,exitPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"11px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor="#9333EA66"} onBlur={e=>e.target.style.borderColor=""}/>
-                  </div>
-                  <div style={{display:"flex",alignItems:"flex-end"}}>
-                    {/* Canlı K/Z önizleme */}
-                    {newTrade.entryPrice && newTrade.exitPrice && newTrade.entry1Amount && (() => {
-                      const ep = parseFloat(newTrade.entryPrice||0);
-                      const xp = parseFloat(newTrade.exitPrice||0);
-                      const amt = parseFloat(newTrade.entry1Amount||0) + parseFloat(newTrade.entry2Amount||0) + parseFloat(newTrade.entry3Amount||0);
-                      const lev = parseFloat(newTrade.leverage)||1;
-                      const pnl = newTrade.direction==="Long" ? (xp-ep)/ep*amt*lev : (ep-xp)/ep*amt*lev;
-                      const pct = ep > 0 ? (newTrade.direction==="Long" ? (xp-ep)/ep*100*lev : (ep-xp)/ep*100*lev) : 0;
-                      const isUp = pnl >= 0;
-                      return (
-                        <div style={{padding:"10px 14px",background:isUp?"rgba(34,197,94,.08)":"rgba(239,68,68,.08)",border:`1px solid ${isUp?"#22C55E":"#EF4444"}33`,borderRadius:8,flex:1}}>
-                          <div style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Tahmini K/Z</div>
-                          <div style={{fontSize:18,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:isUp?"#22C55E":"#EF4444"}}>{isUp?"+":""}{pnl.toFixed(2)}$</div>
-                          <div style={{fontSize:11,color:isUp?"#22C55E99":"#EF444499"}}>{isUp?"+":""}{pct.toFixed(2)}%</div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* Entry 1/2/3 — alt alta fiyat+miktar çiftleri */}
-                <div style={{background:T.bgInput,borderRadius:10,padding:14,border:`1px solid ${T.border}`}}>
-                  <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:12,textTransform:"uppercase",letterSpacing:.5,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span>📊 Entry Seviyeleri & Ortalama Fiyat</span>
-                    {newTrade.entryPrice && <span style={{fontSize:12,color:"#9333EA",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>Ort: ${parseFloat(newTrade.entryPrice)<1?parseFloat(newTrade.entryPrice).toFixed(6):parseFloat(newTrade.entryPrice).toFixed(4)}</span>}
-                  </div>
-                  {/* Satır başlıkları */}
-                  <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:8,marginBottom:6}}>
-                    <div/>
-                    <div style={{fontSize:10,color:T.textMuted,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>Fiyat ($)</div>
-                    <div style={{fontSize:10,color:T.textMuted,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>Miktar ($)</div>
-                  </div>
-                  {/* Entry 1 */}
-                  {[
-                    {n:1,c:"#3b82f6"},
-                    {n:2,c:"#9333EA"},
-                    {n:3,c:"#F59E0B"},
-                  ].map(({n,c}) => (
-                      <div key={n} style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:8,marginBottom:8,alignItems:"center"}}>
-                        <div style={{fontSize:11,fontWeight:700,color:c,padding:"8px 0",display:"flex",alignItems:"center",gap:4}}>
-                          <div style={{width:6,height:6,borderRadius:"50%",background:c}}/>
-                          Entry {n}
-                        </div>
-                        <input type="number" value={newTrade[`entry${n}Price`]||""} onChange={e=>setNewTrade(p=>{
-                          const np = {...p,[`entry${n}Price`]:e.target.value};
-                          const entries = [1,2,3].map(i=>({p:parseFloat(np[`entry${i}Price`]||0),a:parseFloat(np[`entry${i}Amount`]||0)})).filter(e=>e.p>0&&e.a>0);
-                            if(entries.length>0){const ta=entries.reduce((s,e)=>s+e.a,0);const tq=entries.reduce((s,e)=>s+e.a/e.p,0);np.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);np.amount=String(ta);}
-                          return np;
-                        })} placeholder="0.00" style={{padding:"9px 12px",background:T.bg,border:`1px solid ${c}33`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=c+"88"} onBlur={e=>e.target.style.borderColor=c+"33"}/>
-                        <input type="number" value={newTrade[`entry${n}Amount`]||""} onChange={e=>setNewTrade(p=>{
-                          const np = {...p,[`entry${n}Amount`]:e.target.value};
-                          const entries = [1,2,3].map(i=>({p:parseFloat(np[`entry${i}Price`]||0),a:parseFloat(np[`entry${i}Amount`]||0)})).filter(e=>e.p>0&&e.a>0);
-                            if(entries.length>0){const ta=entries.reduce((s,e)=>s+e.a,0);const tq=entries.reduce((s,e)=>s+e.a/e.p,0);np.entryPrice=(ta/tq).toFixed(ta/tq<1?6:4);np.amount=String(ta);}
-                          return np;
-                        })} placeholder="100" style={{padding:"9px 12px",background:T.bg,border:`1px solid ${c}33`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace",width:"100%",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=c+"88"} onBlur={e=>e.target.style.borderColor=c+"33"}/>
-                      </div>
-                    );
-                  })}
-                  {/* Sonuç */}
-                  {newTrade.entryPrice && parseFloat(newTrade.entryPrice) > 0 && (
-                    <div style={{marginTop:8,padding:"10px 12px",background:`linear-gradient(135deg,#9333EA11,#3b82f611)`,borderRadius:8,border:"1px solid #9333EA22",display:"flex",gap:20,flexWrap:"wrap",alignItems:"center"}}>
-                      <div><span style={{fontSize:10,color:T.textMuted}}>Toplam Miktar: </span><span style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>${parseFloat(newTrade.amount||0).toFixed(2)}</span></div>
-                      <div><span style={{fontSize:10,color:T.textMuted}}>Ort. Giriş Fiyatı: </span><span style={{fontSize:14,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:"#9333EA"}}>${parseFloat(newTrade.entryPrice)<1?parseFloat(newTrade.entryPrice).toFixed(6):parseFloat(newTrade.entryPrice).toFixed(4)}</span></div>
-                    </div>
-                  )}
+              <div style={{...st.card,borderLeft:`3px solid #3b82f6`}}>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>💲 Fiyat & Pozisyon</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Giriş Fiyatı</div><input type="number" value={newTrade.entryPrice} onChange={e=>setNewTrade(p=>({...p,entryPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Çıkış Fiyatı</div><input type="number" value={newTrade.exitPrice} onChange={e=>setNewTrade(p=>({...p,exitPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Kontrat Miktarı (USDT)</div><input type="number" value={newTrade.amount} onChange={e=>setNewTrade(p=>({...p,amount:e.target.value}))} placeholder="100" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
                 </div>
               </div>
 
               {/* SL & TP */}
-              <div style={{...st.card,borderLeft:`3px solid #10b981`,background:T.bgCard}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:16,display:"flex",alignItems:"center",gap:8}}>🎯 Stop Loss & Take Profit</div>
-
-                {/* Stop Loss */}
-                <div style={{marginBottom:16,padding:"12px 14px",background:T.redGlow,border:`1px solid ${T.red}22`,borderRadius:10}}>
-                  <div style={{fontSize:11,fontWeight:700,color:T.red,marginBottom:8,textTransform:"uppercase",letterSpacing:.5,display:"flex",alignItems:"center",gap:6}}>
-                    🛑 Stop Loss
-                    {newTrade.stopLoss && newTrade.entryPrice && parseFloat(newTrade.entryPrice)>0 && (
-                      <span style={{fontSize:11,padding:"1px 8px",borderRadius:4,background:T.red+"22",color:T.red,fontWeight:700,marginLeft:4}}>
-                        {(((parseFloat(newTrade.stopLoss)-parseFloat(newTrade.entryPrice))/parseFloat(newTrade.entryPrice))*100).toFixed(2)}%
-                      </span>
-                    )}
-                  </div>
-                  <input type="number" value={newTrade.stopLoss} onChange={e=>setNewTrade(p=>({...p,stopLoss:e.target.value}))} placeholder="0.00"
-                    style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.red}44`,borderRadius:8,color:T.red,fontSize:14,fontWeight:600,outline:"none",fontFamily:"'JetBrains Mono',monospace",transition:"border-color .2s"}}
-                    onFocus={e=>e.target.style.borderColor=T.red+"88"} onBlur={e=>e.target.style.borderColor=T.red+"44"}/>
-                </div>
-
-                {/* Take Profit 1 / 2 / 3 */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-                  {[
-                    {n:1,key:"tp1",amtKey:"tp1Amount",color:"#22C55E",label:"TP 1"},
-                    {n:2,key:"tp2",amtKey:"tp2Amount",color:"#10B981",label:"TP 2"},
-                    {n:3,key:"tp3",amtKey:"tp3Amount",color:"#06B6D4",label:"TP 3"},
-                  ].map(tp => {
-                    const _p = parseFloat(newTrade[tp.key]||0);
-                    const _e = parseFloat(newTrade.entryPrice||0);
-                    const _a = parseFloat(newTrade[tp.amtKey]||0);
-                    const _lev = parseFloat(newTrade.leverage)||1;
-                    const _gain = _e>0&&_p>0 ? ((_p-_e)/_e*100*_lev) : 0;
-                    const _profit = _a>0&&_e>0&&_p>0 ? (newTrade.direction==="Long"?(_p-_e)/_e*_a*_lev:(_e-_p)/_e*_a*_lev) : 0;
-                    return (
-                      <div key={tp.n} style={{padding:"12px 14px",background:_p>0?tp.color+"0a":T.bgInput,border:`1px solid ${_p>0?tp.color+"33":T.border}`,borderRadius:10,transition:"all .2s"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                          <span style={{fontSize:11,fontWeight:700,color:_p>0?tp.color:T.textMuted,textTransform:"uppercase",letterSpacing:.5}}>{tp.label}</span>
-                          {_gain>0 && <span style={{fontSize:10,padding:"1px 7px",borderRadius:4,background:tp.color+"18",color:tp.color,fontWeight:700}}>+{_gain.toFixed(2)}%</span>}
-                        </div>
-                        <div style={{marginBottom:8}}>
-                          <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Fiyat</div>
-                          <input type="number" value={newTrade[tp.key]||""} onChange={e=>setNewTrade(p=>({...p,[tp.key]:e.target.value}))} placeholder="0.00"
-                            style={{width:"100%",padding:"8px 10px",background:T.bgInput,border:`1px solid ${tp.color}${_p>0?"55":"22"}`,borderRadius:7,color:_p>0?tp.color:T.text,fontSize:13,fontWeight:_p>0?700:400,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                        </div>
-                        <div>
-                          <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Miktar ($)</div>
-                          <input type="number" value={newTrade[tp.amtKey]||""} onChange={e=>setNewTrade(p=>({...p,[tp.amtKey]:e.target.value}))} placeholder="Opsiyonel"
-                            style={{width:"100%",padding:"8px 10px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                        </div>
-                        {_profit>0 && (
-                          <div style={{marginTop:8,padding:"6px 8px",background:tp.color+"0f",borderRadius:6,display:"flex",justifyContent:"space-between"}}>
-                            <span style={{fontSize:10,color:T.textMuted}}>Tahmini Kar:</span>
-                            <span style={{fontSize:12,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:tp.color}}>+${_profit.toFixed(2)}</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+              <div style={{...st.card,borderLeft:`3px solid #10b981`}}>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>🎯 Stop Loss & Take Profit</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12}}>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Stop Loss</div><input type="number" value={newTrade.stopLoss} onChange={e=>setNewTrade(p=>({...p,stopLoss:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.red}33`,borderRadius:8,color:T.red,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Take Profit 1</div><input type="number" value={newTrade.tp1} onChange={e=>setNewTrade(p=>({...p,tp1:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.green}33`,borderRadius:8,color:T.green,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Take Profit 2</div><input type="number" value={newTrade.tp2} onChange={e=>setNewTrade(p=>({...p,tp2:e.target.value}))} placeholder="Opsiyonel" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Take Profit 3</div><input type="number" value={newTrade.tp3} onChange={e=>setNewTrade(p=>({...p,tp3:e.target.value}))} placeholder="Opsiyonel" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
                 </div>
               </div>
 
@@ -2656,362 +2191,223 @@ export default function CryptoPortfolio() {
               {/* Kaydet */}
               <div style={{display:"flex",gap:12,justifyContent:"flex-end"}}>
                 <button onClick={()=>{resetNewTrade();setEditTrade(null);setTradeView("list");}} style={{padding:"12px 24px",background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:10,color:T.textMuted,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>İptal</button>
-                <button onClick={saveTrade} style={{padding:"14px 40px",background:"linear-gradient(135deg,#9333EA,#7C3AED,#D4A017)",border:"none",borderRadius:12,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 6px 24px rgba(147,51,234,.35)",transition:"transform .15s, box-shadow .15s",letterSpacing:".3px"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 10px 32px rgba(147,51,234,.45)";}} onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="0 6px 24px rgba(147,51,234,.35)";}}>✓ {editTrade!==null?"Güncelle":"Trade Kaydet"}</button>
+                <button onClick={saveTrade} style={{padding:"12px 32px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 20px rgba(147,51,234,.25)"}}>{editTrade!==null?"Güncelle":"Trade Kaydet"}</button>
               </div>
             </div>
           </div>}
 
           {/* ═══ ANALYTICS ═══ */}
-          {tradeView==="analytics"&&<>{(()=>{
-            const totalVolume = trades.reduce((s,t)=>s+parseFloat(t.amount||0),0);
-            var totalVolumeAll = trades.reduce((s,t)=>s+parseFloat(t.amount||0),0);
-            var openPnl = trades.filter(t=>t.status==="Acik"&&t.entryPrice).reduce((s,t)=>{const cp=prices[t.symbol?.split("/")[0]?.toLowerCase()]?.usd||0;if(!cp)return s;const e=parseFloat(t.entryPrice),a=parseFloat(t.amount||0),l=parseFloat(t.leverage)||1;return s+(t.direction==="Long"?(cp-e)/e*a*l:(e-cp)/e*a*l);},0);
-            var avgDuration = closedTrades.length>0?Math.round(closedTrades.reduce((s,t)=>{const d=t.exitDate&&t.entryDate?((new Date(t.exitDate)-new Date(t.entryDate))/3600000):0;return s+d;},0)/closedTrades.length):0;
-            var byMarket = trades.reduce((acc,t)=>{acc[t.market||"Kripto"]=(acc[t.market||"Kripto"]||0)+1;return acc;},{});
-            var byDir = {Long:trades.filter(t=>t.direction==="Long").length,Short:trades.filter(t=>t.direction==="Short").length};
-            var monthlyPnl = closedTrades.reduce((acc,t)=>{const m=new Date(t.exitDate||t.entryDate).toLocaleDateString("tr-TR",{month:"short",year:"2-digit"});acc[m]=(acc[m]||0)+calcPnl(t);return acc;},{});
-            var monthlyArr = Object.entries(monthlyPnl).map(([m,v])=>({month:m,pnl:+v.toFixed(2)}));
+          {tradeView==="analytics"&&<div style={{animation:"fadeUp .4s ease-out"}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+              {[
+                {label:"Toplam K/Z",val:(totalPnl>=0?"+":"")+"$"+totalPnl.toFixed(2),sub:winRate.toFixed(1)+"% kazanma",color:totalPnl>=0?T.green:T.red,bg:totalPnl>=0?"rgba(34,197,94,.08)":"rgba(239,68,68,.08)",icon:"💰"},
+                {label:"Toplam Hacim",val:"$"+(tradeVolume>=1000?(tradeVolume/1000).toFixed(1)+"K":tradeVolume.toFixed(0)),sub:trades.length+" trade",color:"#3b82f6",bg:"rgba(59,130,246,.08)",icon:"📊"},
+                {label:"Profit Factor",val:profitFactor.toFixed(2),sub:"R/Ö: "+(avgLoss>0?(avgWin/avgLoss).toFixed(2):"—"),color:T.accent,bg:"rgba(147,51,234,.08)",icon:"🎯"},
+                {label:"Açık Pozisyon",val:String(openTrades.length),sub:"trade açık",color:T.gold,bg:"rgba(212,160,23,.08)",icon:"⚡"},
+              ].map((k,i)=>(
+                <div key={i} style={{...st.card,background:k.bg,border:`1px solid ${k.color}22`,padding:18}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                    <div style={{fontSize:11,color:T.textMuted}}>{k.label}</div>
+                    <span style={{fontSize:18}}>{k.icon}</span>
+                  </div>
+                  <div style={{fontSize:22,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:k.color,marginBottom:4}}>{k.val}</div>
+                  <div style={{fontSize:11,color:T.textMuted}}>{k.sub}</div>
+                </div>
+              ))}
+            </div>
 
-            return <div>
-              {/* Ana KPI Kartları — büyük */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
-                {[
-                  {label:"Toplam K/Z",val:`${totalPnl>=0?"+":""}$${totalPnl.toFixed(2)}`,sub:`${winRate.toFixed(1)}% kazanma`,color:totalPnl>=0?T.green:T.red,icon:"💰",gradient:totalPnl>=0?"rgba(34,197,94,.08)":"rgba(239,68,68,.08)"},
-                  {label:"Toplam Hacim",val:`$${totalVolume>=1000?(totalVolume/1000).toFixed(1)+"K":totalVolume.toFixed(0)}`,sub:`${trades.length} toplam trade`,color:"#3b82f6",icon:"📊",gradient:"rgba(59,130,246,.08)"},
-                  {label:"Açık Pozisyon K/Z",val:`${openPnl>=0?"+":""}$${openPnl.toFixed(2)}`,sub:`${trades.filter(t=>t.status==="Acik").length} açık trade`,color:openPnl>=0?T.green:T.red,icon:"⚡",gradient:openPnl>=0?"rgba(34,197,94,.06)":"rgba(239,68,68,.06)"},
-                  {label:"Profit Factor",val:profitFactor.toFixed(2),sub:`R/Ö: ${avgLoss>0?(avgWin/avgLoss).toFixed(2):"—"}`,color:T.accent,icon:"🎯",gradient:"rgba(147,51,234,.08)"},
-                ].map((k,i)=>(
-                  <div key={i} style={{...st.card,background:k.gradient,border:`1px solid ${k.color}22`,padding:18,animation:`bounceIn ${.3+i*.06}s cubic-bezier(.22,1,.36,1) both`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <div style={{fontSize:11,color:T.textMuted,fontWeight:500}}>{k.label}</div>
-                      <span style={{fontSize:20}}>{k.icon}</span>
+            {/* Equity Eğrisi */}
+            <div style={{...st.card,marginBottom:20}}>
+              <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12}}>Equity Eğrisi</div>
+              {equityData.length>0?<ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={equityData}><defs><linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={T.accent} stopOpacity={0.3}/><stop offset="100%" stopColor={T.accent} stopOpacity={0}/></linearGradient></defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={T.border} /><XAxis dataKey="date" tick={{fontSize:10,fill:T.textMuted}} /><YAxis tick={{fontSize:10,fill:T.textMuted}} tickFormatter={v=>"$"+v} />
+                <Tooltip contentStyle={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12}} />
+                <Area type="monotone" dataKey="equity" stroke={T.accent} fill="url(#eqGrad)" strokeWidth={2} /></AreaChart>
+              </ResponsiveContainer>:<div style={{padding:40,textAlign:"center",color:T.textMuted}}>Kapalı trade verisi yok</div>}
+            </div>
+
+            {/* Detay İstatistikler */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+              {[
+                {l:"En İyi Trade",v:"+$"+(closedTrades.length>0?Math.max(...closedTrades.map(t=>calcPnl(t))).toFixed(2):"0.00"),c:T.green},
+                {l:"En Kötü Trade",v:"-$"+(closedTrades.length>0?Math.abs(Math.min(...closedTrades.map(t=>calcPnl(t)))).toFixed(2):"0.00"),c:T.red},
+                {l:"Ort. Kazanç",v:"$"+avgWin.toFixed(2),c:T.green},
+                {l:"Ort. Kayıp",v:"$"+avgLoss.toFixed(2),c:T.red},
+                {l:"Max Drawdown",v:"$"+maxDrawdown.toFixed(2),c:T.red},
+                {l:"Beklenti",v:"$"+(closedTrades.length>0?(totalPnl/closedTrades.length).toFixed(2):"0.00"),c:T.gold},
+                {l:"Ort. Süre",v:avgDuration+"s",c:"#8B5CF6"},
+                {l:"Toplam Hacim",v:"$"+(tradeVolume>=1000?(tradeVolume/1000).toFixed(1)+"K":tradeVolume.toFixed(0)),c:"#3b82f6"},
+              ].map((k,i)=>(
+                <div key={i} style={{...st.card,padding:14}}>
+                  <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>{k.l}</div>
+                  <div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:k.c}}>{k.v}</div>
+                </div>
+              ))}
+            </div>
+            {/* Long/Short + Piyasa */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div style={{...st.card,padding:16}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>📐 Long / Short</div>
+                <div style={{display:"flex",gap:12}}>
+                  {[["Long",longCount,T.green],["Short",shortCount,T.red]].map(([l,n,clr])=>(
+                    <div key={l} style={{flex:1,padding:14,background:clr+"0a",border:`1px solid ${clr}22`,borderRadius:10,textAlign:"center"}}>
+                      <div style={{fontSize:11,color:clr,marginBottom:4,fontWeight:600}}>{l}</div>
+                      <div style={{fontSize:24,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:clr}}>{n}</div>
+                      <div style={{fontSize:10,color:T.textMuted}}>{trades.length>0?(n/trades.length*100).toFixed(0):0}%</div>
                     </div>
-                    <div style={{fontSize:24,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:k.color,marginBottom:4}}>{k.val}</div>
-                    <div style={{fontSize:11,color:T.textMuted}}>{k.sub}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Equity Eğrisi + Aylık P&L */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
-                <div style={{...st.card}}>
-                  <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:12,display:"flex",justifyContent:"space-between"}}>
-                    <span>📈 Equity Eğrisi</span>
-                    <span style={{fontSize:11,color:totalPnl>=0?T.green:T.red,fontFamily:"'JetBrains Mono',monospace"}}>{totalPnl>=0?"+":""}${totalPnl.toFixed(2)}</span>
-                  </div>
-                  {equityData.length>0?<ResponsiveContainer width="100%" height={200}>
-                    <AreaChart data={equityData}><defs><linearGradient id="eqG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={totalPnl>=0?"#22C55E":"#EF4444"} stopOpacity={.3}/><stop offset="100%" stopColor={totalPnl>=0?"#22C55E":"#EF4444"} stopOpacity={0}/></linearGradient></defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={T.border}/><XAxis dataKey="date" tick={{fontSize:9,fill:T.textMuted}}/><YAxis tick={{fontSize:9,fill:T.textMuted}} tickFormatter={v=>"$"+v}/>
-                    <Tooltip contentStyle={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:8,fontSize:11}}/>
-                    <Area type="monotone" dataKey="equity" stroke={totalPnl>=0?"#22C55E":"#EF4444"} fill="url(#eqG)" strokeWidth={2.5}/>
-                  </AreaChart></ResponsiveContainer>:<div style={{height:200,display:"flex",alignItems:"center",justifyContent:"center",color:T.textMuted,fontSize:13}}>Kapalı trade verisi yok</div>}
-                </div>
-                <div style={{...st.card}}>
-                  <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:12}}>📅 Aylık K/Z</div>
-                  {monthlyArr.length>0?<ResponsiveContainer width="100%" height={200}>
-                    <AreaChart data={monthlyArr}><defs><linearGradient id="mG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={T.accent} stopOpacity={.3}/><stop offset="100%" stopColor={T.accent} stopOpacity={0}/></linearGradient></defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={T.border}/><XAxis dataKey="month" tick={{fontSize:9,fill:T.textMuted}}/><YAxis tick={{fontSize:9,fill:T.textMuted}} tickFormatter={v=>"$"+v}/>
-                    <Tooltip contentStyle={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:8,fontSize:11}} formatter={v=>["$"+v.toFixed(2),"K/Z"]}/>
-                    <Area type="monotone" dataKey="pnl" stroke={T.accent} fill="url(#mG)" strokeWidth={2}/>
-                  </AreaChart></ResponsiveContainer>:<div style={{height:200,display:"flex",alignItems:"center",justifyContent:"center",color:T.textMuted,fontSize:13}}>Veri yok</div>}
+                  ))}
                 </div>
               </div>
-
-              {/* İstatistik grid */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
-                {[
-                  {l:"En İyi Trade",v:`+$${closedTrades.length>0?Math.max(...closedTrades.map(t=>calcPnl(t))).toFixed(2):"0.00"}`,c:T.green},
-                  {l:"En Kötü Trade",v:`-$${closedTrades.length>0?Math.abs(Math.min(...closedTrades.map(t=>calcPnl(t)))).toFixed(2):"0.00"}`,c:T.red},
-                  {l:"Ort. Kazanç",v:`$${avgWin.toFixed(2)}`,c:T.green},
-                  {l:"Ort. Kayıp",v:`$${avgLoss.toFixed(2)}`,c:T.red},
-                  {l:"Max Drawdown",v:`$${maxDrawdown.toFixed(2)}`,c:T.red},
-                  {l:"Beklenti",v:`$${closedTrades.length>0?(totalPnl/closedTrades.length).toFixed(2):"0.00"}`,c:T.gold},
-                  {l:"Ort. Süre",v:avgDuration+"s",c:"#8B5CF6"},
-                  {l:"Toplam Trade",v:String(trades.length),c:T.accent},
-                ].map((k,i)=>(
-                  <div key={i} style={{...st.card,padding:14}}>
-                    <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>{k.l}</div>
-                    <div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:k.c}}>{k.v}</div>
-                  </div>
-                ))}
+              <div style={{...st.card,padding:16}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>📊 Piyasa Dağılımı</div>
+                {Object.entries(tradesByMarket).map(([m,cnt])=>{
+                  const pct=trades.length>0?cnt/trades.length*100:0;
+                  return (<div key={m} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                    <span style={{fontSize:12,color:T.textSecondary,minWidth:60}}>{m}</span>
+                    <div style={{flex:1,height:6,background:T.border,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:T.accent,borderRadius:3}}/></div>
+                    <span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:T.accent,minWidth:50,textAlign:"right"}}>{cnt} ({pct.toFixed(0)}%)</span>
+                  </div>);
+                })}
               </div>
+            </div>
+          </div>}
 
-              {/* Piyasa & Yön Dağılımı */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                <div style={{...st.card,padding:16}}>
-                  <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>📊 Piyasa Dağılımı</div>
-                  {Object.entries(byMarket).map(([m,count])=>{
-                    const pct = trades.length > 0 ? count/trades.length*100 : 0;
-                    return (<div key={m} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                      <span style={{fontSize:12,color:T.textSecondary,minWidth:60}}>{m}</span>
-                      <div style={{flex:1,height:6,background:T.border,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:T.accent,borderRadius:3,transition:"width .5s"}}/></div>
-                      <span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:T.accent,minWidth:40,textAlign:"right"}}>{count} ({pct.toFixed(0)}%)</span>
-                    </div>);
-                  })}
-                </div>
-                <div style={{...st.card,padding:16}}>
-                  <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>📐 Long / Short</div>
-                  <div style={{display:"flex",gap:12,marginBottom:12}}>
-                    {[["Long",byDir.Long,T.green],["Short",byDir.Short,T.red]].map(([l,n,c])=>(
-                      <div key={l} style={{flex:1,padding:14,background:c+"0a",border:`1px solid ${c}22`,borderRadius:10,textAlign:"center"}}>
-                        <div style={{fontSize:11,color:c,marginBottom:4,fontWeight:600}}>{l}</div>
-                        <div style={{fontSize:24,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:c}}>{n}</div>
-                        <div style={{fontSize:10,color:T.textMuted}}>{trades.length>0?(n/trades.length*100).toFixed(0):0}%</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{fontSize:11,color:T.textMuted,marginTop:8}}>Toplam hacim: <span style={{color:"#3b82f6",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>${totalVolumeAll>=1000?(totalVolumeAll/1000).toFixed(1)+"K":totalVolumeAll.toFixed(0)}</span></div>
-                </div>
-              </div>
-            </div>;
-          })()}</>
-}
-
-          {/* ═══ NOTLAR — Hata & Ders Günlüğü ═══ */}
-          {tradeView==="notes"&&<div style={{animation:"tabSwitch .3s cubic-bezier(.22,1,.36,1) both"}}>
+          {/* ═══ GOALS ═══ */}
+          {tradeView==="notes"&&<div style={{animation:"fadeUp .4s ease-out"}}>
             <div style={{marginBottom:20}}>
               <div style={{fontSize:20,fontWeight:700,color:T.text,marginBottom:4}}>📝 Trade Notları & Hatalar</div>
               <div style={{fontSize:13,color:T.textMuted}}>Tüm tradelerden çıkan notlar, hatalar ve dersler</div>
             </div>
-
-            {trades.filter(t=>t.notes||t.mistakes||t.lessons||t.emotion).length === 0 ? (
-              <div style={{...st.card,padding:60,textAlign:"center"}}>
-                <div style={{fontSize:40,marginBottom:12}}>📝</div>
-                <div style={{fontSize:16,fontWeight:600,color:T.text,marginBottom:4}}>Henüz not yok</div>
-                <div style={{fontSize:13,color:T.textMuted}}>Trade eklerken not, hata ve ders alanlarını doldur</div>
-              </div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                {trades.filter(t=>t.notes||t.mistakes||t.lessons||t.emotion).map((t,i)=>{
-                  const pnl = calcPnl(t);
-                  const isWin = pnl > 0;
-                  const isClosed = t.status === "Kapali";
+            {trades.filter(t=>t.notes||t.mistakes||t.lessons).length===0
+              ? <div style={{...st.card,padding:60,textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>📝</div><div style={{fontSize:16,fontWeight:600,color:T.text,marginBottom:4}}>Henüz not yok</div><div style={{fontSize:13,color:T.textMuted}}>Trade eklerken not ve hata alanlarını doldur</div></div>
+              : <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {trades.filter(t=>t.notes||t.mistakes||t.lessons).map((t,i)=>{
+                  const pnl=calcPnl(t); const isClosed=t.status==="Kapali";
                   return (
-                    <div key={t.id||i} style={{...st.card,padding:0,overflow:"hidden",borderLeft:`3px solid ${isClosed?(isWin?T.green:T.red):T.gold}`}}>
-                      {/* Kart header */}
-                      <div style={{padding:"12px 16px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",background:`linear-gradient(135deg,${isClosed?(isWin?"rgba(34,197,94,.04)":"rgba(239,68,68,.04)"):"rgba(234,179,8,.04)"},transparent)`}}>
-                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div key={t.id||i} style={{...st.card,padding:0,overflow:"hidden",borderLeft:`3px solid ${isClosed?(pnl>0?T.green:T.red):T.gold}`}}>
+                      <div style={{padding:"12px 16px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
                           <span style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{t.symbol}</span>
                           <span style={{fontSize:9,padding:"2px 7px",borderRadius:3,background:t.direction==="Long"?"#22C55E18":"#EF444418",color:t.direction==="Long"?"#22C55E":"#EF4444",fontWeight:700}}>{t.direction}</span>
-                          <span style={{fontSize:9,padding:"2px 7px",borderRadius:3,background:T.bgInput,color:T.textMuted}}>{t.exchange}</span>
-                          {t.emotion&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:3,background:"#8B5CF618",color:"#8B5CF6",fontWeight:500}}>😶 {t.emotion}</span>}
+                          {t.emotion&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:3,background:"#8B5CF618",color:"#8B5CF6"}}>{t.emotion}</span>}
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:12}}>
                           {t.entryDate&&<span style={{fontSize:11,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{new Date(t.entryDate).toLocaleDateString("tr-TR",{day:"2-digit",month:"short",year:"numeric"})}</span>}
-                          {isClosed&&<span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:isWin?T.green:T.red}}>{isWin?"+":""}{pnl.toFixed(2)}$</span>}
-                          {!isClosed&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:3,background:"#EAB30818",color:"#EAB308",fontWeight:600}}>Açık</span>}
+                          {isClosed&&<span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:pnl>0?T.green:T.red}}>{pnl>0?"+":""}{pnl.toFixed(2)}$</span>}
                         </div>
                       </div>
-
-                      {/* İçerik */}
                       <div style={{padding:"14px 16px",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-                        {t.notes&&(
-                          <div style={{gridColumn: (!t.mistakes && !t.lessons) ? "1 / -1" : "auto"}}>
-                            <div style={{fontSize:10,fontWeight:700,color:T.accent,textTransform:"uppercase",letterSpacing:.5,marginBottom:6,display:"flex",alignItems:"center",gap:4}}>
-                              <span>📋</span> Not
-                            </div>
-                            <div style={{fontSize:12,color:T.textSecondary,lineHeight:1.6,background:T.bgInput,padding:"8px 10px",borderRadius:7,border:`1px solid ${T.border}`}}>{t.notes}</div>
-                          </div>
-                        )}
-                        {t.mistakes&&(
-                          <div>
-                            <div style={{fontSize:10,fontWeight:700,color:T.red,textTransform:"uppercase",letterSpacing:.5,marginBottom:6,display:"flex",alignItems:"center",gap:4}}>
-                              <span>⚠</span> Hatalar
-                            </div>
-                            <div style={{fontSize:12,color:T.textSecondary,lineHeight:1.6,background:"rgba(239,68,68,.04)",padding:"8px 10px",borderRadius:7,border:`1px solid ${T.red}22`}}>{t.mistakes}</div>
-                          </div>
-                        )}
-                        {t.lessons&&(
-                          <div>
-                            <div style={{fontSize:10,fontWeight:700,color:T.green,textTransform:"uppercase",letterSpacing:.5,marginBottom:6,display:"flex",alignItems:"center",gap:4}}>
-                              <span>💡</span> Dersler
-                            </div>
-                            <div style={{fontSize:12,color:T.textSecondary,lineHeight:1.6,background:"rgba(34,197,94,.04)",padding:"8px 10px",borderRadius:7,border:`1px solid ${T.green}22`}}>{t.lessons}</div>
-                          </div>
-                        )}
+                        {t.notes&&<div><div style={{fontSize:10,fontWeight:700,color:T.accent,textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>📋 Not</div><div style={{fontSize:12,color:T.textSecondary,lineHeight:1.6,background:T.bgInput,padding:"8px 10px",borderRadius:7,border:`1px solid ${T.border}`}}>{t.notes}</div></div>}
+                        {t.mistakes&&<div><div style={{fontSize:10,fontWeight:700,color:T.red,textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>⚠ Hatalar</div><div style={{fontSize:12,color:T.textSecondary,lineHeight:1.6,background:"rgba(239,68,68,.04)",padding:"8px 10px",borderRadius:7,border:`1px solid ${T.red}22`}}>{t.mistakes}</div></div>}
+                        {t.lessons&&<div><div style={{fontSize:10,fontWeight:700,color:T.green,textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>💡 Dersler</div><div style={{fontSize:12,color:T.textSecondary,lineHeight:1.6,background:"rgba(34,197,94,.04)",padding:"8px 10px",borderRadius:7,border:`1px solid ${T.green}22`}}>{t.lessons}</div></div>}
                       </div>
-
-                      {/* Alt puan + setup kalitesi */}
-                      {(t.score||t.setupQuality||t.followedPlan!==undefined)&&(
-                        <div style={{padding:"8px 16px",borderTop:`1px solid ${T.border}`,display:"flex",gap:16,alignItems:"center",background:T.bgCardSolid+"80"}}>
-                          {t.score&&<div style={{display:"flex",alignItems:"center",gap:6}}>
-                            <span style={{fontSize:10,color:T.textMuted}}>Puan:</span>
-                            <span style={{fontSize:12,fontWeight:700,color:t.score>=7?T.green:t.score>=4?T.gold:T.red}}>{t.score}/10</span>
-                            <div style={{display:"flex",gap:1}}>
-                              {[...Array(10)].map((_,j)=>(
-                                <div key={j} style={{width:4,height:4,borderRadius:1,background:j<t.score?(t.score>=7?T.green:t.score>=4?T.gold:T.red):T.border}}/>
-                              ))}
-                            </div>
-                          </div>}
-                          {t.setupQuality&&<div style={{display:"flex",alignItems:"center",gap:4}}>
-                            <span style={{fontSize:10,color:T.textMuted}}>Setup:</span>
-                            <span style={{fontSize:10,padding:"1px 6px",borderRadius:3,background:T.accentGlow,color:T.accent,fontWeight:600}}>{t.setupQuality}</span>
-                          </div>}
-                          {t.followedPlan!==undefined&&<div style={{display:"flex",alignItems:"center",gap:4}}>
-                            <span style={{fontSize:10,color:T.textMuted}}>Plana Uyuldu:</span>
-                            <span style={{fontSize:11,fontWeight:700,color:t.followedPlan?T.green:T.red}}>{t.followedPlan?"✓ Evet":"✕ Hayır"}</span>
-                          </div>}
-                          <button onClick={()=>{setNewTrade({...t});setEditTrade(i);setTradeView("add");}}
-                            style={{marginLeft:"auto",padding:"4px 12px",background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,borderRadius:5,color:T.textSecondary,fontSize:10,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                            ✎ Düzenle
-                          </button>
-                        </div>
-                      )}
+                      {t.score&&<div style={{padding:"8px 16px",borderTop:`1px solid ${T.border}`,display:"flex",gap:14,alignItems:"center",background:T.bgCardSolid+"80"}}>
+                        <span style={{fontSize:10,color:T.textMuted}}>Puan:</span>
+                        <span style={{fontSize:12,fontWeight:700,color:t.score>=7?T.green:t.score>=4?T.gold:T.red}}>{t.score}/10</span>
+                        {t.followedPlan!==undefined&&<><span style={{fontSize:10,color:T.textMuted}}>Plan:</span><span style={{fontSize:11,fontWeight:700,color:t.followedPlan?T.green:T.red}}>{t.followedPlan?"✓":"✕"}</span></>}
+                        <button onClick={()=>{setNewTrade({...t});setEditTrade(i);setTradeView("add");}} style={{marginLeft:"auto",padding:"4px 12px",background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,borderRadius:5,color:T.textSecondary,fontSize:10,cursor:"pointer"}}>✎ Düzenle</button>
+                      </div>}
                     </div>
                   );
                 })}
               </div>
-            )}
+            }
           </div>}
-
         </div>}
 
 
 
-        {/* ═══ HABERLER ═══ */}
-        {tab==="news"&&
-        <div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
-            {/* Header */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
-              <div>
-                <div style={{fontSize:20,fontWeight:700,color:T.text}}>📰 Piyasa Haberleri</div>
-                <div style={{fontSize:13,color:T.textMuted}}>CryptoPanic • CryptoCompare • CoinGecko</div>
-              </div>
-              <button onClick={()=>fetchNews(newsFilter)} disabled={newsLoading}
-                style={{padding:"8px 16px",background:T.bgCard,border:`1px solid ${T.border}`,color:T.accent,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:6,transition:"all .2s"}}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor=T.accent+"66";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;}}>
-                {newsLoading?<span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>◌</span>:"↻"} Yenile
+        {tab==="news"&&<div style={{animation:"fadeUp .4s ease-out"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+            <div>
+              <div style={{fontSize:20,fontWeight:700,color:T.text}}>📰 Piyasa Haberleri</div>
+              <div style={{fontSize:13,color:T.textMuted}}>CryptoPanic • CryptoCompare • Portföy Odaklı</div>
+            </div>
+            <button onClick={()=>fetchNews(newsFilter)} disabled={newsLoading}
+              style={{padding:"8px 16px",background:T.bgCard,border:`1px solid ${T.border}`,color:T.accent,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:6}}>
+              {newsLoading?<span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>◌</span>:"↻"} Yenile
+            </button>
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+            {[{v:"portfolio",l:"🎯 Portföyüm"},{v:"all",l:"🌐 Tümü"}].map(f=>(
+              <button key={f.v} onClick={()=>setNewsFilter(f.v)}
+                style={{padding:"7px 16px",background:newsFilter===f.v?"linear-gradient(135deg,#9333EA,#7C3AED)":T.bgCard,border:`1px solid ${newsFilter===f.v?"#9333EA44":T.border}`,color:newsFilter===f.v?"#fff":T.textSecondary,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
+                {f.l}
               </button>
-            </div>
-
-            {/* Filtre sekmeler */}
-            <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
-              {[
-                {v:"portfolio",l:`🎯 Portföyüm (${newsPortfolioCoins.length} coin)`,accent:true},
-                {v:"all",l:"🌐 Tümü",accent:false},
-              ].map(f=>(
-                <button key={f.v} onClick={()=>setNewsFilter(f.v)}
-                  style={{padding:"7px 16px",background:newsFilter===f.v?"linear-gradient(135deg,#9333EA,#7C3AED)":T.bgCard,border:`1px solid ${newsFilter===f.v?"#9333EA44":T.border}`,color:newsFilter===f.v?"#fff":T.textSecondary,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:8,fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
-                  {f.l}
-                </button>
-              ))}
-              {/* Portföy coin chip'leri */}
-              {newsFilter==="portfolio" && newsPortfolioCoins.length>0 && (
-                <div style={{display:"flex",gap:4,flexWrap:"wrap",marginLeft:4}}>
-                  {newsPortfolioCoins.slice(0,12).map(sym=>(
-                    <span key={sym} style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"#9333EA18",color:"#9333EA",fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{sym}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* İlk yükleme */}
-            {!newsLoaded && !newsLoading && (
-              <div style={{...st.card,padding:60,textAlign:"center"}}>
-                <div style={{fontSize:48,marginBottom:16}}>📰</div>
-                <div style={{fontSize:16,fontWeight:700,color:T.text,marginBottom:8}}>Haberler yüklensin mi?</div>
-                <div style={{fontSize:13,color:T.textMuted,marginBottom:20,lineHeight:1.7}}>
-                  Portföyündeki coinlerle ilgili haberleri otomatik filtreleyeceğiz.<br/>
-                  <span style={{color:"#9333EA",fontWeight:600}}>{newsPortfolioCoins.join(", ") || "—"}</span>
-                </div>
-                <button onClick={()=>fetchNews("portfolio")}
-                  style={{padding:"12px 32px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 20px rgba(147,51,234,.3)"}}>
-                  🚀 Haberleri Yükle
-                </button>
-              </div>
-            )}
-
-            {/* Loading */}
-            {newsLoading && (
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
-                {[...Array(6)].map((_,i)=>(
-                  <div key={i} style={{...st.card,padding:16}}>
-                    <div style={{height:150,background:T.border,borderRadius:8,marginBottom:12,animation:"skeletonPulse 1.5s infinite"}}/>
-                    <div style={{height:13,background:T.border,borderRadius:4,marginBottom:8,width:"85%",animation:"skeletonPulse 1.5s infinite"}}/>
-                    <div style={{height:13,background:T.border,borderRadius:4,marginBottom:8,width:"65%",animation:"skeletonPulse 1.5s infinite"}}/>
-                    <div style={{height:11,background:T.border,borderRadius:4,width:"40%",animation:"skeletonPulse 1.5s infinite"}}/>
-                  </div>
+            ))}
+            {newsFilter==="portfolio"&&newsPortfolioCoins.length>0&&(
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginLeft:4}}>
+                {newsPortfolioCoins.slice(0,12).map(s=>(
+                  <span key={s} style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"#9333EA18",color:"#9333EA",fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{s}</span>
                 ))}
               </div>
             )}
-
-            {/* Sonuç sayısı */}
-            {newsLoaded && !newsLoading && (
-              <div style={{fontSize:12,color:T.textMuted,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{color:T.textSecondary,fontWeight:600}}>{newsFiltered.length}</span> haber bulundu
-                {newsFilter==="portfolio" && newsFiltered.length===0 && newsData.length>0 && (
-                  <span style={{color:"#EAB308"}}> · Portföy coinleri için haber yok, tüm haberlere geçin</span>
-                )}
-              </div>
-            )}
-
-            {/* Haberler Grid */}
-            {newsLoaded && !newsLoading && newsFiltered.length > 0 && (
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
-                {newsFiltered.map((article,i)=>{
-                  const sentColor=article.sentiment==="bullish"?T.green:article.sentiment==="bearish"?T.red:null;
-                  const matchCoins=(article.currencies||[]).filter(s=>newsPortfolioCoins.includes(s));
-                  return (
-                    <a key={article.id||i} href={article.url} target="_blank" rel="noopener noreferrer"
-                      style={{textDecoration:"none",display:"block",...st.card,padding:0,overflow:"hidden",cursor:"pointer",
-                        borderColor:article.isPortfolio?T.accent+"44":T.border,
-                        transition:"transform .2s,border-color .2s,box-shadow .2s",
-                        animation:`newsSlide ${Math.min(0.1+i*0.04,0.6)}s cubic-bezier(.22,1,.36,1) both`}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=`0 8px 32px rgba(0,0,0,.3)`;e.currentTarget.style.borderColor=T.accent+"66";}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";e.currentTarget.style.borderColor=article.isPortfolio?T.accent+"44":T.border;}}>
-                      {/* Görsel */}
-                      {article.imageUrl?(
-                        <div style={{height:150,overflow:"hidden",background:T.bgCardSolid,position:"relative"}}>
-                          <img src={article.imageUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
-                            onError={e=>{e.target.parentElement.style.background=`linear-gradient(135deg,#9333EA11,${T.bgCardSolid})`;e.target.style.display="none";}}/>
-                          {article.isPortfolio && <div style={{position:"absolute",top:8,right:8,fontSize:9,padding:"2px 7px",borderRadius:3,background:"rgba(147,51,234,.85)",color:"#fff",fontWeight:700,backdropFilter:"blur(4px)"}}>🎯 Portföy</div>}
-                        </div>
-                      ):(
-                        <div style={{height:70,background:`linear-gradient(135deg,${T.accent}0d,${T.bgCardSolid})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,position:"relative"}}>
-                          📰
-                          {article.isPortfolio && <div style={{position:"absolute",top:8,right:8,fontSize:9,padding:"2px 7px",borderRadius:3,background:"rgba(147,51,234,.85)",color:"#fff",fontWeight:700}}>🎯 Portföy</div>}
-                        </div>
-                      )}
-                      <div style={{padding:14}}>
-                        {/* Üst bar */}
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                          <span style={{fontSize:10,fontWeight:700,color:T.accent,textTransform:"uppercase",letterSpacing:.5,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{article.source}</span>
-                          <div style={{display:"flex",alignItems:"center",gap:5}}>
-                            {sentColor&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:3,background:sentColor+"18",color:sentColor,fontWeight:700}}>{article.sentiment==="bullish"?"📈":"📉"}</span>}
-                            <span style={{fontSize:10,color:T.textMuted,whiteSpace:"nowrap"}}>{newsTimeAgo(article.publishedAt)}</span>
-                          </div>
-                        </div>
-                        {/* Başlık */}
-                        <div style={{fontSize:13,fontWeight:600,color:T.text,lineHeight:1.5,marginBottom:8,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{article.title}</div>
-                        {/* Özet */}
-                        {article.body&&<div style={{fontSize:11,color:T.textMuted,lineHeight:1.6,marginBottom:8,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{article.body}</div>}
-                        {/* Coin etiketleri */}
-                        {matchCoins.length>0&&(
-                          <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:8}}>
-                            {matchCoins.slice(0,5).map(s=>(
-                              <span key={s} style={{fontSize:9,padding:"2px 6px",borderRadius:3,background:"#9333EA18",color:"#9333EA",fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{s}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            )}
-
-            {newsLoaded && !newsLoading && newsFiltered.length === 0 && newsData.length > 0 && (
-              <div style={{...st.card,padding:48,textAlign:"center"}}>
-                <div style={{fontSize:36,marginBottom:12}}>🔍</div>
-                <div style={{fontSize:14,color:T.text,fontWeight:600,marginBottom:8}}>Portföy coinleri için haber bulunamadı</div>
-                <div style={{fontSize:12,color:T.textMuted,marginBottom:16}}>Genel haberleri görmek için "Tümü" seçin</div>
-                <button onClick={()=>setNewsFilter("all")} style={{padding:"8px 20px",background:T.accentGlow,border:`1px solid ${T.accent}44`,borderRadius:8,color:T.accent,fontSize:12,fontWeight:600,cursor:"pointer"}}>Tüm Haberlere Geç</button>
-              </div>
-            )}
           </div>
-        }
+          {!newsLoaded&&!newsLoading&&(
+            <div style={{...st.card,padding:60,textAlign:"center"}}>
+              <div style={{fontSize:48,marginBottom:16}}>📰</div>
+              <div style={{fontSize:16,fontWeight:700,color:T.text,marginBottom:8}}>Haberleri Yükle</div>
+              <div style={{fontSize:13,color:T.textMuted,marginBottom:20}}>Portföyündeki coinler: <span style={{color:"#9333EA",fontWeight:600}}>{newsPortfolioCoins.join(", ")||"—"}</span></div>
+              <button onClick={()=>fetchNews("portfolio")} style={{padding:"12px 32px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>🚀 Haberleri Yükle</button>
+            </div>
+          )}
+          {newsLoading&&(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
+              {[...Array(6)].map((_,i)=>(
+                <div key={i} style={{...st.card,padding:16}}>
+                  <div style={{height:150,background:T.border,borderRadius:8,marginBottom:12,animation:"skeletonPulse 1.5s infinite"}}/>
+                  <div style={{height:13,background:T.border,borderRadius:4,marginBottom:8,width:"85%",animation:"skeletonPulse 1.5s infinite"}}/>
+                  <div style={{height:11,background:T.border,borderRadius:4,width:"50%",animation:"skeletonPulse 1.5s infinite"}}/>
+                </div>
+              ))}
+            </div>
+          )}
+          {newsLoaded&&!newsLoading&&(
+            <div style={{fontSize:12,color:T.textMuted,marginBottom:12}}><span style={{color:T.textSecondary,fontWeight:600}}>{newsFiltered.length}</span> haber</div>
+          )}
+          {newsLoaded&&!newsLoading&&newsFiltered.length>0&&(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
+              {newsFiltered.map((article,i)=>(
+                <a key={article.id||i} href={article.url} target="_blank" rel="noopener noreferrer"
+                  style={{textDecoration:"none",display:"block",...st.card,padding:0,overflow:"hidden",cursor:"pointer",
+                    borderColor:article.isPortfolio?T.accent+"44":T.border,
+                    transition:"transform .2s,border-color .2s,box-shadow .2s"}}
+                  onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,.3)";e.currentTarget.style.borderColor=T.accent+"66";}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";e.currentTarget.style.borderColor=article.isPortfolio?T.accent+"44":T.border;}}>
+                  {article.imageUrl?(
+                    <div style={{height:150,overflow:"hidden",background:T.bgCardSolid,position:"relative"}}>
+                      <img src={article.imageUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.parentElement.style.display="none";}}/>
+                      {article.isPortfolio&&<div style={{position:"absolute",top:8,right:8,fontSize:9,padding:"2px 7px",borderRadius:3,background:"rgba(147,51,234,.85)",color:"#fff",fontWeight:700}}>🎯 Portföy</div>}
+                    </div>
+                  ):(
+                    <div style={{height:70,background:`linear-gradient(135deg,${T.accent}0d,${T.bgCardSolid})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,position:"relative"}}>
+                      📰
+                      {article.isPortfolio&&<div style={{position:"absolute",top:8,right:8,fontSize:9,padding:"2px 7px",borderRadius:3,background:"rgba(147,51,234,.85)",color:"#fff",fontWeight:700}}>🎯</div>}
+                    </div>
+                  )}
+                  <div style={{padding:14}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                      <span style={{fontSize:10,fontWeight:700,color:T.accent,textTransform:"uppercase",letterSpacing:.5,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{article.source}</span>
+                      <span style={{fontSize:10,color:T.textMuted}}>{newsTimeAgo(article.publishedAt)}</span>
+                    </div>
+                    <div style={{fontSize:13,fontWeight:600,color:T.text,lineHeight:1.5,marginBottom:6,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{article.title}</div>
+                    {article.body&&<div style={{fontSize:11,color:T.textMuted,lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{article.body}</div>}
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+          {newsLoaded&&!newsLoading&&newsFiltered.length===0&&(
+            <div style={{...st.card,padding:48,textAlign:"center"}}>
+              <div style={{fontSize:36,marginBottom:12}}>🔍</div>
+              <div style={{fontSize:14,color:T.text,fontWeight:600,marginBottom:8}}>Portföy coinleri için haber bulunamadı</div>
+              <button onClick={()=>setNewsFilter("all")} style={{padding:"8px 20px",background:T.accentGlow,border:`1px solid ${T.accent}44`,borderRadius:8,color:T.accent,fontSize:12,fontWeight:600,cursor:"pointer"}}>Tüm Haberlere Geç</button>
+            </div>
+          )}
+        </div>}
 
-        {tab==="reports"&&<div style={{animation:"tabSwitch .35s cubic-bezier(.22,1,.36,1) both"}}>
+        {tab==="reports"&&<div style={{animation:"fadeUp .4s ease-out"}}>
           {/* Report Actions */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16,marginBottom:24}}>
             <div style={{...st.card,padding:24,display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:16,background:T.gradientHero,border:`1px solid ${T.accent}22`}}>
@@ -3186,27 +2582,6 @@ export default function CryptoPortfolio() {
               {ncCoin && prices[ncCoin.id] && <div style={{marginTop:8,fontSize:11,color:T.textMuted}}>Güncel fiyat: <span style={{color:"#9333EA",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(prices[ncCoin.id].usd,prices[ncCoin.id].usd<1?6:2)}</span></div>}
             </div>
 
-            {/* ── Hedef Fiyat & Stop-Loss ── */}
-            <div style={{marginBottom:16}}>
-              <div style={{fontSize:10,color:T.textSecondary,textTransform:"uppercase",letterSpacing:1,marginBottom:10,fontWeight:600,borderBottom:`1px solid ${T.border}`,paddingBottom:6}}>🎯 Hedef Fiyat & Stop-Loss <span style={{fontSize:9,color:T.textMuted,textTransform:"none",letterSpacing:0}}>(opsiyonel)</span></div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <div>
-                  <label style={{display:"block",fontSize:11,color:T.green,marginBottom:6,fontWeight:600}}>🎯 Hedef Fiyat</label>
-                  <input type="number" step="any" placeholder="örn: 100000" value={ncTargetPrice} onChange={e=>setNcTargetPrice(e.target.value)} style={{width:"100%",padding:"11px 12px",background:T.bgInput,border:`1px solid ${T.green}44`,borderRadius:8,color:T.green,fontSize:14,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                  {ncTargetPrice && ncBuyPrice && parseFloat(ncBuyPrice) > 0 && (
-                    <div style={{marginTop:4,fontSize:10,color:T.green}}>+{(((parseFloat(ncTargetPrice)-parseFloat(ncBuyPrice))/parseFloat(ncBuyPrice))*100).toFixed(1)}% hedef getiri</div>
-                  )}
-                </div>
-                <div>
-                  <label style={{display:"block",fontSize:11,color:T.red,marginBottom:6,fontWeight:600}}>🛑 Stop-Loss</label>
-                  <input type="number" step="any" placeholder="örn: 55000" value={ncStopLoss} onChange={e=>setNcStopLoss(e.target.value)} style={{width:"100%",padding:"11px 12px",background:T.bgInput,border:`1px solid ${T.red}44`,borderRadius:8,color:T.red,fontSize:14,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                  {ncStopLoss && ncBuyPrice && parseFloat(ncBuyPrice) > 0 && (
-                    <div style={{marginTop:4,fontSize:10,color:T.red}}>{(((parseFloat(ncStopLoss)-parseFloat(ncBuyPrice))/parseFloat(ncBuyPrice))*100).toFixed(1)}% max kayıp</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* ── Section 3: Hesap Özeti ── */}
             {ncCoin&&ncAmount&&ncBuyPrice&&<div style={{marginBottom:16}}>
               <div style={{fontSize:10,color:T.textSecondary,textTransform:"uppercase",letterSpacing:1,marginBottom:10,fontWeight:600,borderBottom:`1px solid ${T.border}`,paddingBottom:6}}>Hesap Özeti</div>
@@ -3257,110 +2632,6 @@ export default function CryptoPortfolio() {
           </div>
         </div>
       </div>}
-
-      {/* ═══ İŞLEM GEÇMİŞİ MODAL ═══ */}
-      {showTxModal && txCoinId && (() => {
-        const coin = knownCoins.find(c=>c.id===txCoinId) || {id:txCoinId,symbol:"?",name:txCoinId};
-        const txList = transactions[txCoinId] || [];
-        const currentPrice = prices[txCoinId]?.usd || 0;
-        const totalBought = txList.filter(t=>t.type==="buy").reduce((s,t)=>s+t.amount,0);
-        const totalSpent = txList.filter(t=>t.type==="buy").reduce((s,t)=>s+t.total,0);
-        const avgCost = totalBought > 0 ? totalSpent / totalBought : 0;
-        const addTx = () => {
-          if (!newTxAmount || !newTxPrice) return;
-          const tx = { id: Date.now(), type: newTxType, amount: parseFloat(newTxAmount), price: parseFloat(newTxPrice), date: newTxDate || new Date().toISOString(), total: parseFloat(newTxAmount) * parseFloat(newTxPrice) };
-          setTransactions(prev => ({ ...prev, [txCoinId]: [...(prev[txCoinId]||[]), tx] }));
-          setNewTxAmount(""); setNewTxPrice("");
-        };
-        return (
-          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1100,backdropFilter:"blur(8px)"}} onClick={()=>setShowTxModal(false)}>
-            <div style={{background:`linear-gradient(135deg,${T.bgCardSolid},${T.bgSecondary})`,border:`1px solid ${T.borderLight}`,borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,.6)"}} onClick={e=>e.stopPropagation()}>
-              {/* Header */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 20px",borderBottom:`1px solid ${T.border}`}}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:36,height:36,borderRadius:9,background:"#9333EA18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#9333EA"}}>{coin.symbol?.charAt(0)}</div>
-                  <div>
-                    <div style={{fontSize:15,fontWeight:700,color:T.text}}>{coin.name} İşlem Geçmişi</div>
-                    <div style={{fontSize:11,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{coin.symbol}</div>
-                  </div>
-                </div>
-                <button style={{background:"none",border:"none",color:T.textMuted,fontSize:18,cursor:"pointer"}} onClick={()=>setShowTxModal(false)}>✕</button>
-              </div>
-
-              <div style={{padding:20}}>
-                {/* Özet */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
-                  {[
-                    ["Toplam Miktar", totalBought.toFixed(totalBought<1?6:4), T.text],
-                    ["Ort. Maliyet", avgCost > 0 ? fmt(avgCost, avgCost<1?6:2) : "—", T.gold],
-                    ["Güncel Fiyat", currentPrice > 0 ? fmt(currentPrice, currentPrice<1?6:2) : "—", currentPrice >= avgCost ? T.green : T.red],
-                  ].map(([l,v,c])=>(
-                    <div key={l} style={{background:T.bgInput,borderRadius:10,padding:12,border:`1px solid ${T.border}`,textAlign:"center"}}>
-                      <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>{l}</div>
-                      <div style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:c}}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Yeni İşlem Ekle */}
-                <div style={{background:T.bgInput,borderRadius:12,padding:14,border:`1px solid ${T.border}`,marginBottom:16}}>
-                  <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>+ Yeni İşlem Ekle</div>
-                  <div style={{display:"flex",gap:6,marginBottom:10}}>
-                    {[["buy","Alış",T.green],["sell","Satış",T.red]].map(([t,l,c])=>(
-                      <button key={t} onClick={()=>setNewTxType(t)} style={{flex:1,padding:"8px",background:newTxType===t?c+"18":"transparent",border:`1px solid ${newTxType===t?c+"44":T.border}`,borderRadius:7,color:newTxType===t?c:T.textMuted,fontSize:12,fontWeight:600,cursor:"pointer"}}>{l}</button>
-                    ))}
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                    <div>
-                      <label style={{fontSize:10,color:T.textMuted,display:"block",marginBottom:4}}>Miktar</label>
-                      <input type="number" step="any" value={newTxAmount} onChange={e=>setNewTxAmount(e.target.value)} placeholder="0.5" style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                    </div>
-                    <div>
-                      <label style={{fontSize:10,color:T.textMuted,display:"block",marginBottom:4}}>Fiyat ($)</label>
-                      <input type="number" step="any" value={newTxPrice} onChange={e=>setNewTxPrice(e.target.value)} placeholder="65000" style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
-                    </div>
-                  </div>
-                  <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
-                    <div style={{flex:1}}>
-                      <label style={{fontSize:10,color:T.textMuted,display:"block",marginBottom:4}}>Tarih</label>
-                      <input type="datetime-local" value={newTxDate} onChange={e=>setNewTxDate(e.target.value)} style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:12,outline:"none"}}/>
-                    </div>
-                    <button onClick={addTx} disabled={!newTxAmount||!newTxPrice} style={{padding:"9px 20px",background:`linear-gradient(135deg,${newTxType==="buy"?"#22C55E":"#EF4444"},${newTxType==="buy"?"#16A34A":"#DC2626"})`,border:"none",borderRadius:7,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",opacity:newTxAmount&&newTxPrice?1:.5}}>
-                      {newTxType === "buy" ? "Alış Ekle" : "Satış Ekle"}
-                    </button>
-                  </div>
-                  {newTxAmount && newTxPrice && <div style={{marginTop:8,fontSize:11,color:T.textMuted}}>Toplam: <span style={{color:T.text,fontWeight:600}}>{fmt(parseFloat(newTxAmount)*parseFloat(newTxPrice))}</span></div>}
-                </div>
-
-                {/* İşlem Listesi */}
-                <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>İşlem Geçmişi ({txList.length})</div>
-                {txList.length === 0 ? (
-                  <div style={{textAlign:"center",padding:30,color:T.textMuted,fontSize:13}}>Henüz işlem yok</div>
-                ) : (
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {[...txList].reverse().map((tx,i)=>(
-                      <div key={tx.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:T.bgInput,borderRadius:8,border:`1px solid ${tx.type==="buy"?T.green+"22":T.red+"22"}`}}>
-                        <div style={{display:"flex",alignItems:"center",gap:10}}>
-                          <span style={{width:28,height:28,borderRadius:6,background:tx.type==="buy"?T.green+"18":T.red+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:tx.type==="buy"?T.green:T.red}}>{tx.type==="buy"?"↑":"↓"}</span>
-                          <div>
-                            <div style={{fontSize:12,fontWeight:600,color:tx.type==="buy"?T.green:T.red}}>{tx.type==="buy"?"Alış":"Satış"}</div>
-                            <div style={{fontSize:10,color:T.textMuted}}>{new Date(tx.date).toLocaleDateString("tr-TR",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
-                          </div>
-                        </div>
-                        <div style={{textAlign:"right"}}>
-                          <div style={{fontSize:12,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>{tx.amount} @ {fmt(tx.price,tx.price<1?6:2)}</div>
-                          <div style={{fontSize:11,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{fmt(tx.total)}</div>
-                        </div>
-                        <button onClick={()=>setTransactions(prev=>({...prev,[txCoinId]:prev[txCoinId].filter(t=>t.id!==tx.id)}))} style={{width:22,height:22,border:`1px solid ${T.red}33`,background:T.redGlow,color:T.red,borderRadius:4,cursor:"pointer",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",marginLeft:8}}>✕</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       <Settings show={showSettings} onClose={()=>setShowSettings(false)} apiKey={apiKey} onKeyChange={setApiKey} onSave={saveKey} keyStatus={keyStatus}/>
 
