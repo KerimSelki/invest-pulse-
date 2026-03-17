@@ -654,6 +654,7 @@ export default function CryptoPortfolio() {
   const [tradeKasa, setTradeKasa] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_kasa") || "5000"); } catch(e) { return 5000; } });
   const [tradeR, setTradeR] = useState(() => { try { return parseFloat(localStorage.getItem("ip_trade_r") || "100"); } catch(e) { return 100; } });
   const [entryCount, setEntryCount] = useState(3);
+  const [screenshotPasteActive, setScreenshotPasteActive] = useState(false);
   const [tradeTemplates, setTradeTemplates] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_trade_templates") || "[]"); } catch(e) { return []; } });
   const [calendarMonth, setCalendarMonth] = useState(() => { const d=new Date(); return {y:d.getFullYear(),m:d.getMonth()}; });
   const [goals, setGoals] = useState(() => { try { return JSON.parse(localStorage.getItem("ip_goals") || "[]"); } catch(e) { return []; } });
@@ -2664,29 +2665,71 @@ export default function CryptoPortfolio() {
 
               {/* 📸 Trade Görseli */}
               <div style={{...st.card,borderLeft:`3px solid #8B5CF6`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>📸 Trade Görseli</div>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span style={{display:"flex",alignItems:"center",gap:8}}>📸 Trade Görseli</span>
+                  {!newTrade.screenshot&&(
+                    <span style={{fontSize:11,color:T.textMuted,fontWeight:400}}>TradingView'den kopyala → Ctrl+V</span>
+                  )}
+                </div>
                 {newTrade.screenshot
                   ? <div style={{position:"relative"}}>
-                      <img src={newTrade.screenshot} alt="trade" style={{width:"100%",maxHeight:320,objectFit:"contain",borderRadius:10,border:`1px solid ${T.border}`}}/>
-                      <button onClick={()=>setNewTrade(p=>({...p,screenshot:""}))}
-                        style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:6,background:"rgba(239,68,68,.85)",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-                    </div>
-                  : <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,padding:"28px 20px",borderRadius:10,border:`2px dashed ${T.border}`,cursor:"pointer",transition:"border-color .2s,background .2s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.borderColor=T.accent+"88";e.currentTarget.style.background=T.accentGlow;}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.background="transparent";}}>
-                      <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
-                        const file=e.target.files[0];
-                        if(!file) return;
-                        const reader=new FileReader();
-                        reader.onload=ev=>setNewTrade(p=>({...p,screenshot:ev.target.result}));
-                        reader.readAsDataURL(file);
-                      }}/>
-                      <div style={{width:48,height:48,borderRadius:12,background:T.accentGlow,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>📸</div>
-                      <div style={{textAlign:"center"}}>
-                        <div style={{fontSize:13,fontWeight:600,color:T.textSecondary,marginBottom:3}}>Grafik görselini buraya yükle</div>
-                        <div style={{fontSize:11,color:T.textMuted}}>PNG, JPG — max 5MB</div>
+                      <img src={newTrade.screenshot} alt="trade" style={{width:"100%",maxHeight:400,objectFit:"contain",borderRadius:10,border:`1px solid ${T.border}`,background:T.bgCardSolid}}/>
+                      <div style={{position:"absolute",top:8,right:8,display:"flex",gap:6}}>
+                        <button onClick={()=>window.open(newTrade.screenshot,"_blank")}
+                          style={{padding:"5px 10px",borderRadius:6,background:"rgba(0,0,0,.6)",border:"none",color:"#fff",fontSize:10,cursor:"pointer",fontWeight:600}}>🔍 Büyüt</button>
+                        <button onClick={()=>setNewTrade(p=>({...p,screenshot:""}))}
+                          style={{width:28,height:28,borderRadius:6,background:"rgba(239,68,68,.85)",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
                       </div>
-                    </label>
+                    </div>
+                  : <div
+                      tabIndex={0}
+                      onFocus={()=>setScreenshotPasteActive(true)}
+                      onBlur={()=>setScreenshotPasteActive(false)}
+                      onPaste={e=>{
+                        const items=e.clipboardData.items;
+                        for(let i=0;i<items.length;i++){
+                          if(items[i].type.startsWith("image/")){
+                            const file=items[i].getAsFile();
+                            const reader=new FileReader();
+                            reader.onload=ev=>setNewTrade(p=>({...p,screenshot:ev.target.result}));
+                            reader.readAsDataURL(file);
+                            break;
+                          }
+                        }
+                      }}
+                      style={{
+                        outline:"none",
+                        display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,
+                        padding:"32px 20px",borderRadius:10,
+                        border:`2px dashed ${screenshotPasteActive?T.accent:T.border}`,
+                        background:screenshotPasteActive?T.accentGlow:"transparent",
+                        transition:"all .2s",cursor:"text"
+                      }}
+                      onClick={e=>e.currentTarget.focus()}>
+                      <div style={{width:56,height:56,borderRadius:14,background:screenshotPasteActive?T.accentGlow:T.bgInput,border:`1px solid ${screenshotPasteActive?T.accent+"44":T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,transition:"all .2s"}}>
+                        {screenshotPasteActive?"📋":"📸"}
+                      </div>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontSize:14,fontWeight:700,color:screenshotPasteActive?T.accent:T.textSecondary,marginBottom:4,transition:"color .2s"}}>
+                          {screenshotPasteActive?"Şimdi Ctrl+V ile yapıştır":"Buraya tıkla ve Ctrl+V"}
+                        </div>
+                        <div style={{fontSize:11,color:T.textMuted,lineHeight:1.6}}>
+                          TradingView'de <kbd style={{padding:"1px 5px",borderRadius:3,background:T.bgInput,border:`1px solid ${T.border}`,fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>Alt+S</kbd> ile screenshot al
+                          <br/>ardından bu alana tıkla ve <kbd style={{padding:"1px 5px",borderRadius:3,background:T.bgInput,border:`1px solid ${T.border}`,fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>Ctrl+V</kbd> ile yapıştır
+                        </div>
+                      </div>
+                      {/* Dosya yükleme alternatifi */}
+                      <label style={{fontSize:10,color:T.textMuted,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3}}>
+                        veya dosyadan seç
+                        <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+                          const file=e.target.files[0];
+                          if(!file) return;
+                          const reader=new FileReader();
+                          reader.onload=ev=>setNewTrade(p=>({...p,screenshot:ev.target.result}));
+                          reader.readAsDataURL(file);
+                        }}/>
+                      </label>
+                    </div>
                 }
               </div>
 
