@@ -2389,7 +2389,6 @@ export default function CryptoPortfolio() {
                     </div>
                   </div>
                 )}
-              </div>
                 {/* R Çarpanları özeti */}
                 {newTrade.entryPrice&&newTrade.stopLoss&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&(
                   <div style={{padding:"10px 14px",background:T.bgInput,borderRadius:8,border:`1px solid ${T.border}`}}>
