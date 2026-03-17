@@ -2111,7 +2111,43 @@ export default function CryptoPortfolio() {
                     <td style={{padding:"10px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:T.text}}>${parseFloat(t.amount||0).toFixed(0)}</td>
                     <td style={{padding:"10px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:t.status==="Kapali"?(calcPnl(t)>0?T.green:T.red):T.textMuted}}>{t.status==="Kapali"?(calcPnl(t)>0?"+":"")+calcPnl(t).toFixed(2):"—"}</td>
                     <td style={{padding:"10px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:t.status==="Kapali"?(calcPnl(t)>0?T.green:T.red):T.textMuted}}>{t.status==="Kapali"?(calcPnl(t)>0?"+":"")+calcPnlPct(t).toFixed(2)+"%":"—"}</td>
-                    <td style={{padding:"10px 8px"}}><span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:t.status==="Acik"?"#EAB30818":"#4A4D6518",color:t.status==="Acik"?"#EAB308":"#8B8EA0",fontWeight:600}}>{t.status==="Acik"?"Açık":"Kapalı"}</span></td>
+                    <td style={{padding:"6px 8px",minWidth:140}}>
+                      {t.status==="Acik"
+                        ? <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                            <div style={{display:"flex",gap:3}}>
+                              {t.stopLoss&&<button onClick={()=>{
+                                const updated=[...trades];
+                                updated[i]={...t,status:"Kapali",exitPrice:String(t.stopLoss)};
+                                setTrades(updated);
+                              }} style={{flex:1,padding:"4px 6px",fontSize:9,fontWeight:700,borderRadius:4,border:`1px solid ${T.red}44`,background:"rgba(239,68,68,.08)",color:T.red,cursor:"pointer"}}>🛑 SL</button>}
+                              {t.tp1&&<button onClick={()=>{
+                                const updated=[...trades];
+                                updated[i]={...t,status:"Kapali",exitPrice:String(t.tp1)};
+                                setTrades(updated);
+                              }} style={{flex:1,padding:"4px 6px",fontSize:9,fontWeight:700,borderRadius:4,border:"1px solid #22C55E44",background:"rgba(34,197,94,.08)",color:"#22C55E",cursor:"pointer"}}>TP1</button>}
+                              {t.tp2&&<button onClick={()=>{
+                                const updated=[...trades];
+                                const tps=[parseFloat(t.tp1||0),parseFloat(t.tp2||0)].filter(v=>v>0);
+                                const avg=tps.reduce((s,p)=>s+p,0)/tps.length;
+                                updated[i]={...t,status:"Kapali",exitPrice:String(avg.toFixed(avg<1?6:4))};
+                                setTrades(updated);
+                              }} style={{flex:1,padding:"4px 6px",fontSize:9,fontWeight:700,borderRadius:4,border:"1px solid #10B98144",background:"rgba(16,185,129,.08)",color:"#10B981",cursor:"pointer"}}>TP2</button>}
+                              {t.tp3&&<button onClick={()=>{
+                                const updated=[...trades];
+                                const tps=[parseFloat(t.tp1||0),parseFloat(t.tp2||0),parseFloat(t.tp3||0)].filter(v=>v>0);
+                                const avg=tps.reduce((s,p)=>s+p,0)/tps.length;
+                                updated[i]={...t,status:"Kapali",exitPrice:String(avg.toFixed(avg<1?6:4))};
+                                setTrades(updated);
+                              }} style={{flex:1,padding:"4px 6px",fontSize:9,fontWeight:700,borderRadius:4,border:"1px solid #06B6D444",background:"rgba(6,182,212,.08)",color:"#06B6D4",cursor:"pointer"}}>TP3</button>}
+                            </div>
+                            {!t.stopLoss&&!t.tp1&&<span style={{fontSize:9,padding:"3px 8px",borderRadius:4,background:"#EAB30818",color:"#EAB308",fontWeight:600,textAlign:"center"}}>Açık</span>}
+                          </div>
+                        : <div style={{display:"flex",alignItems:"center",gap:5}}>
+                            <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"#4A4D6518",color:"#8B8EA0",fontWeight:600}}>✓ Kapalı</span>
+                            {t.exitPrice&&<span style={{fontSize:9,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(t.exitPrice).toFixed(2)}</span>}
+                          </div>
+                      }
+                    </td>
                     <td style={{padding:"10px 8px",textAlign:"center"}}><span style={{fontSize:12,fontWeight:700,color:t.score>=7?T.green:t.score>=4?T.gold:T.red}}>{t.score}/10</span></td>
                     <td style={{padding:"10px 8px",textAlign:"center"}}><div style={{display:"flex",gap:4,justifyContent:"center"}}><button onClick={()=>{setNewTrade({...t});setEditTrade(i);setTradeView("add");}} style={{width:26,height:26,border:`1px solid ${T.borderLight}`,background:T.bgCardSolid,color:T.textSecondary,borderRadius:5,cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>✎</button><button onClick={()=>deleteTrade(i)} style={{width:26,height:26,border:`1px solid ${T.red}33`,background:T.redGlow,color:T.red,borderRadius:5,cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div></td>
                   </tr>
@@ -2473,30 +2509,41 @@ export default function CryptoPortfolio() {
                 </div>
                 {/* Çıkış Fiyatı — TP'ler + SL butonları ile */}
                 <div style={{paddingTop:12,borderTop:`1px solid ${T.border}`}}>
-                  <div style={{fontSize:11,color:T.textMuted,fontWeight:600,marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>🚪 Çıkış Fiyatı</div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{fontSize:11,color:T.textMuted,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>🚪 Çıkış Fiyatı</div>
+                    <div style={{fontSize:10,color:T.textMuted}}>TP veya SL'ye tıkla → otomatik dolar</div>
+                  </div>
                   <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+                    {/* SL Butonu */}
                     {newTrade.stopLoss&&parseFloat(newTrade.stopLoss)>0&&(
                       <button onClick={()=>setNewTrade(p=>({...p,exitPrice:parseFloat(p.stopLoss).toFixed(parseFloat(p.stopLoss)<1?6:4),status:"Kapali"}))}
-                        style={{padding:"5px 12px",background:"rgba(239,68,68,.08)",border:`1px solid ${T.red}33`,borderRadius:6,color:T.red,fontSize:11,fontWeight:700,cursor:"pointer"}}>
-                        🛑 SL: ${parseFloat(newTrade.stopLoss).toFixed(2)}
+                        style={{padding:"7px 14px",background:newTrade.exitPrice===String(parseFloat(newTrade.stopLoss).toFixed(parseFloat(newTrade.stopLoss)<1?6:4))?"rgba(239,68,68,.2)":"rgba(239,68,68,.06)",
+                          border:`2px solid ${newTrade.exitPrice===String(parseFloat(newTrade.stopLoss).toFixed(parseFloat(newTrade.stopLoss)<1?6:4))?T.red:T.red+"44"}`,
+                          borderRadius:8,color:T.red,fontSize:11,fontWeight:700,cursor:"pointer",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+                        <span>🛑 Stop</span>
+                        <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.stopLoss).toFixed(2)}</span>
                       </button>
                     )}
-                    {newTrade.tp1&&parseFloat(newTrade.tp1)>0&&(
-                      <button onClick={()=>setNewTrade(p=>({...p,exitPrice:parseFloat(p.tp1).toFixed(parseFloat(p.tp1)<1?6:4),status:"Kapali"}))}
-                        style={{padding:"5px 12px",background:"rgba(34,197,94,.08)",border:"1px solid #22C55E33",borderRadius:6,color:"#22C55E",fontSize:11,fontWeight:600,cursor:"pointer"}}>
-                        TP1: ${parseFloat(newTrade.tp1).toFixed(2)}
+                    {/* TP Butonları */}
+                    {[{k:"tp1",l:"TP1",c:"#22C55E"},{k:"tp2",l:"TP2",c:"#10B981"},{k:"tp3",l:"TP3",c:"#06B6D4"}].filter(tp=>newTrade[tp.k]&&parseFloat(newTrade[tp.k])>0).map(tp=>(
+                      <button key={tp.k} onClick={()=>setNewTrade(p=>({...p,exitPrice:parseFloat(p[tp.k]).toFixed(parseFloat(p[tp.k])<1?6:4),status:"Kapali"}))}
+                        style={{padding:"7px 14px",background:newTrade.exitPrice===String(parseFloat(newTrade[tp.k]).toFixed(parseFloat(newTrade[tp.k])<1?6:4))?"rgba(34,197,94,.2)":"rgba(34,197,94,.06)",
+                          border:`2px solid ${newTrade.exitPrice===String(parseFloat(newTrade[tp.k]).toFixed(parseFloat(newTrade[tp.k])<1?6:4))?tp.c:tp.c+"44"}`,
+                          borderRadius:8,color:tp.c,fontSize:11,fontWeight:700,cursor:"pointer",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+                        <span>✓ {tp.l}</span>
+                        <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade[tp.k]).toFixed(2)}</span>
                       </button>
-                    )}
-                    {(newTrade.tp1||newTrade.tp2||newTrade.tp3)&&[newTrade.tp1,newTrade.tp2,newTrade.tp3].filter(v=>parseFloat(v||0)>0).length>1&&(
+                    ))}
+                    {/* TP Ortalaması */}
+                    {[newTrade.tp1,newTrade.tp2,newTrade.tp3].filter(v=>parseFloat(v||0)>0).length>1&&(
                       <button onClick={()=>{
                         const tps=[parseFloat(newTrade.tp1||0),parseFloat(newTrade.tp2||0),parseFloat(newTrade.tp3||0)].filter(v=>v>0);
                         const tpAmts=[parseFloat(newTrade.tp1Amount||0),parseFloat(newTrade.tp2Amount||0),parseFloat(newTrade.tp3Amount||0)].filter((a,i)=>[parseFloat(newTrade.tp1||0),parseFloat(newTrade.tp2||0),parseFloat(newTrade.tp3||0)][i]>0&&a>0);
-                        const avg = tpAmts.length===tps.length
-                          ? tps.reduce((s,p,i)=>s+p*tpAmts[i],0)/tpAmts.reduce((s,a)=>s+a,0)
-                          : tps.reduce((s,p)=>s+p,0)/tps.length;
+                        const avg=tpAmts.length===tps.length?tps.reduce((s,p,j)=>s+p*tpAmts[j],0)/tpAmts.reduce((s,a)=>s+a,0):tps.reduce((s,p)=>s+p,0)/tps.length;
                         setNewTrade(p=>({...p,exitPrice:avg.toFixed(avg<1?6:4),status:"Kapali"}));
-                      }} style={{padding:"5px 12px",background:"rgba(34,197,94,.1)",border:"1px solid #22C55E44",borderRadius:6,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer"}}>
-                        ✓ TP Ort. ({[newTrade.tp1,newTrade.tp2,newTrade.tp3].filter(v=>parseFloat(v||0)>0).length} TP)
+                      }} style={{padding:"7px 14px",background:"rgba(147,51,234,.06)",border:"2px solid #9333EA44",borderRadius:8,color:T.accent,fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+                        <span>∑ Ortalama</span>
+                        <span style={{fontSize:10,color:T.textMuted}}>Tüm TP'ler</span>
                       </button>
                     )}
                   </div>
