@@ -774,7 +774,7 @@ export default function CryptoPortfolio() {
   // ── Benchmark ──
   const [benchmarkPeriod, setBenchmarkPeriod] = useState("7d");
 
-  const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
+  const [newTrade, setNewTrade] = useState({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
 
   // Trade localStorage sync
   useEffect(() => { try { localStorage.setItem("ip_trades", JSON.stringify(trades)); } catch(e) {} }, [trades]);
@@ -944,7 +944,7 @@ export default function CryptoPortfolio() {
   const profitFactor = avgLoss>0?(avgWin*winTrades.length)/(avgLoss*lossTrades.length):0;
   const maxDrawdown = (() => { let peak=0,dd=0,maxDd=0; closedTrades.sort((a,b)=>new Date(a.exitDate)-new Date(b.exitDate)).forEach(t=>{const eq=peak+calcPnl(t);if(eq>peak)peak=eq;dd=peak-eq;if(dd>maxDd)maxDd=dd;}); return maxDd; })();
 
-  const resetNewTrade = () => { setSymQ(""); setSymOpen(false); setSymResults([]); setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""}); };
+  const resetNewTrade = () => { setSymQ(""); setSymOpen(false); setSymResults([]); setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",entry3Price:"",entry3Amount:"",stopLoss:"",tp1:"",tp1Amount:"",tp2:"",tp2Amount:"",tp3:"",tp3Amount:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""}); };
 
   const saveTrade = () => {
     const t = editTrade !== null ? {...newTrade, id: trades[editTrade].id} : {...newTrade, id: Date.now()};
@@ -2022,24 +2022,24 @@ export default function CryptoPortfolio() {
                 {pData.length===0?<div style={{textAlign:"center",padding:40,color:T.textMuted}}><div style={{fontSize:48,marginBottom:12}}>📊</div>Henüz varlık yok</div>:
                 <table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>{["","Coin","Fiyat","24s","Miktar","Değer","Ağırlık","K/Z","İşlem"].map((h,i)=><th key={i} style={{...st.th,textAlign:i<=1?"left":i===8?"center":"right",width:i===0?30:undefined}}>{h}</th>)}</tr></thead><tbody>
                 {(()=>{
-                  const grouped = {};
+                  var grouped = {};
                   pData.forEach((item, i) => {
-                    const sec = item.section || "Genel";
+                    var sec = item.section || "Genel";
                     if (!grouped[sec]) grouped[sec] = [];
                     grouped[sec].push({ ...item, origIdx: i });
                   });
-                  const sectionOrder = sections.filter(s => grouped[s]);
+                  var sectionOrder = sections.filter(s => grouped[s]);
                   Object.keys(grouped).forEach(s => { if (!sectionOrder.includes(s)) sectionOrder.push(s); });
                   // Also show empty sections as drop targets
                   sections.forEach(s => { if (!sectionOrder.includes(s)) sectionOrder.push(s); });
 
-                  const rows = [];
+                  var rows = [];
                   sectionOrder.forEach((secName, si) => {
-                    const items = grouped[secName] || [];
-                    const secVal = items.reduce((s, it) => s + it.currentValue, 0);
-                    const secPnl = items.reduce((s, it) => s + it.pnl, 0);
-                    const secInv = items.reduce((s, it) => s + it.investedValue, 0);
-                    const isDropTarget = dragIdx !== null && dragOverSection === secName;
+                    var items = grouped[secName] || [];
+                    var secVal = items.reduce((s, it) => s + it.currentValue, 0);
+                    var secPnl = items.reduce((s, it) => s + it.pnl, 0);
+                    var secInv = items.reduce((s, it) => s + it.investedValue, 0);
+                    var isDropTarget = dragIdx !== null && dragOverSection === secName;
 
                     rows.push(
                       <tr key={`sec-${secName}`}
@@ -2055,7 +2055,7 @@ export default function CryptoPortfolio() {
                                   <input autoFocus value={editSectionValue} onChange={e=>setEditSectionValue(e.target.value)}
                                     onKeyDown={e=>{
                                       if(e.key==="Enter"&&editSectionValue.trim()){
-                                        const nv=editSectionValue.trim();
+                                        var nv=editSectionValue.trim();
                                         setSections(p=>p.map(s=>s===secName?nv:s));
                                         setPortfolio(p=>p.map(it=>it.section===secName?{...it,section:nv}:it));
                                         setEditSectionName(null);
@@ -2063,7 +2063,7 @@ export default function CryptoPortfolio() {
                                       if(e.key==="Escape") setEditSectionName(null);
                                     }}
                                     style={{padding:"4px 8px",background:T.bg,border:"1px solid #9333EA44",borderRadius:4,color:T.text,fontSize:14,fontWeight:700,outline:"none",fontFamily:"'Inter',sans-serif",width:160}}/>
-                                  <button onClick={()=>{const nv=editSectionValue.trim();if(nv){setSections(p=>p.map(s=>s===secName?nv:s));setPortfolio(p=>p.map(it=>it.section===secName?{...it,section:nv}:it));}setEditSectionName(null);}}
+                                  <button onClick={()=>{var nv=editSectionValue.trim();if(nv){setSections(p=>p.map(s=>s===secName?nv:s));setPortfolio(p=>p.map(it=>it.section===secName?{...it,section:nv}:it));}setEditSectionName(null);}}
                                     style={{padding:"3px 8px",background:"#9333EA22",border:"1px solid #9333EA44",borderRadius:4,color:"#9333EA",fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✓</button>
                                   <button onClick={()=>setEditSectionName(null)}
                                     style={{padding:"3px 8px",background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,borderRadius:4,color:T.textMuted,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✕</button>
@@ -2075,7 +2075,7 @@ export default function CryptoPortfolio() {
                                   <button onClick={()=>{setEditSectionName(secName);setEditSectionValue(secName);}}
                                     style={{width:22,height:22,border:`1px solid ${T.borderLight}`,background:T.bgCardSolid,color:T.textMuted,borderRadius:4,cursor:"pointer",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}} title="Yeniden adlandır">✎</button>
                                   {sections.length>1&&<button onClick={()=>{
-                                    const fallback=sections.find(s=>s!==secName)||"Kategorisiz";
+                                    var fallback=sections.find(s=>s!==secName)||"Kategorisiz";
                                     if(window.confirm(`"${secName}" kategorisini silmek istediğinize emin misiniz? İçindeki coinler "${fallback}" kategorisine taşınacak.`)){
                                       setPortfolio(p=>p.map(it=>it.section===secName?{...it,section:fallback}:it));
                                       setSections(p=>p.filter(s=>s!==secName));
@@ -2096,9 +2096,9 @@ export default function CryptoPortfolio() {
                     );
 
                     items.forEach((item) => {
-                      const i = item.origIdx;
-                      const pct = totVal > 0 ? (item.currentValue / totVal * 100) : 0;
-                      const isDragging = dragIdx === i;
+                      var i = item.origIdx;
+                      var pct = totVal > 0 ? (item.currentValue / totVal * 100) : 0;
+                      var isDragging = dragIdx === i;
                       rows.push(
                         <tr key={i} draggable
                           onDragStart={()=>setDragIdx(i)}
@@ -2134,7 +2134,7 @@ export default function CryptoPortfolio() {
                           )}
                           <div style={{display:"flex",gap:4,justifyContent:"center"}}>
                             <button onClick={()=>{setTxCoinId(item.coinId);setShowTxModal(true);}} title="İşlem Geçmişi" style={{width:28,height:28,border:`1px solid ${T.accent}44`,background:T.accentGlow,color:T.accent,borderRadius:6,cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>₿</button>
-                            <button onClick={()=>{const it=portfolio[i];const c=knownCoins.find(x=>x.id===it.coinId);setNcCoin(c||{id:it.coinId,symbol:"?",name:it.coinId});setNcAmount(""+it.amount);setNcBuyPrice(""+it.buyPrice);setNcSection(it.section||"Genel");setNcTargetPrice(""+( it.targetPrice||"" ));setNcStopLoss(""+( it.stopLoss||"" ));setEditIdx(i);setShowAdd(true);}} style={{width:28,height:28,border:`1px solid ${T.borderLight}`,background:T.bgCardSolid,color:T.textSecondary,borderRadius:6,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>✎</button>
+                            <button onClick={()=>{var it=portfolio[i];var c=knownCoins.find(x=>x.id===it.coinId);setNcCoin(c||{id:it.coinId,symbol:"?",name:it.coinId});setNcAmount(""+it.amount);setNcBuyPrice(""+it.buyPrice);setNcSection(it.section||"Genel");setNcTargetPrice(""+( it.targetPrice||"" ));setNcStopLoss(""+( it.stopLoss||"" ));setEditIdx(i);setShowAdd(true);}} style={{width:28,height:28,border:`1px solid ${T.borderLight}`,background:T.bgCardSolid,color:T.textSecondary,borderRadius:6,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>✎</button>
                             <button onClick={()=>setDelConfirm(i)} style={{width:28,height:28,border:`1px solid ${T.red}33`,background:T.redGlow,color:T.red,borderRadius:6,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
                           </div>
                         </td></tr>
@@ -2160,9 +2160,9 @@ export default function CryptoPortfolio() {
 
           {/* Market Distribution Bar */}
           {(()=>{
-            const mktTotals={};
-            allPData.forEach(item=>{const m=getMarketType(item.coinId);mktTotals[m]=(mktTotals[m]||0)+item.currentValue;});
-            const mktE=Object.entries(mktTotals).sort((a,b)=>b[1]-a[1]);
+            var mktTotals={};
+            allPData.forEach(item=>{var m=getMarketType(item.coinId);mktTotals[m]=(mktTotals[m]||0)+item.currentValue;});
+            var mktE=Object.entries(mktTotals).sort((a,b)=>b[1]-a[1]);
             if(mktE.length===0) return null;
             return(<div style={{...st.card,marginBottom:20,padding:16}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
@@ -2377,13 +2377,33 @@ export default function CryptoPortfolio() {
           {tradeView==="add"&&<div style={{animation:"tabSwitch .3s cubic-bezier(.22,1,.36,1) both"}}>
             {/* Canlı özet bar */}
             {(newTrade.entryPrice||newTrade.symbol) && (
-              <div style={{marginBottom:16,padding:"12px 18px",background:`linear-gradient(135deg,#9333EA0a,#3b82f60a)`,border:"1px solid #9333EA22",borderRadius:12,display:"flex",gap:20,alignItems:"center",flexWrap:"wrap"}}>
-                {newTrade.symbol&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,color:"#8B8EA0"}}>Sembol:</span><span style={{fontSize:13,fontWeight:700,color:"#E8E9ED",fontFamily:"'JetBrains Mono',monospace"}}>{newTrade.symbol}</span></div>}
-                {newTrade.direction&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,padding:"2px 8px",borderRadius:4,background:newTrade.direction==="Long"?"#22C55E18":"#EF444418",color:newTrade.direction==="Long"?"#22C55E":"#EF4444",fontWeight:700}}>{newTrade.direction}</span></div>}
-                {newTrade.entryPrice&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,color:"#8B8EA0"}}>Giriş:</span><span style={{fontSize:13,fontWeight:700,color:"#9333EA",fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.entryPrice).toFixed(newTrade.entryPrice<1?6:2)}</span></div>}
-                {newTrade.amount&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,color:"#8B8EA0"}}>Miktar:</span><span style={{fontSize:13,fontWeight:700,color:"#E8E9ED",fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.amount).toFixed(0)}</span></div>}
-                {newTrade.leverage&&newTrade.leverage!=="1x"&&<div style={{fontSize:11,padding:"2px 8px",borderRadius:4,background:"#D4A01718",color:"#D4A017",fontWeight:700}}>{newTrade.leverage}</div>}
-                <div style={{marginLeft:"auto",fontSize:11,color:"#4A4D65"}}>{newTrade.status==="Acik"?"🟡 Açık Pozisyon":"✅ Kapalı"}</div>
+              <div style={{marginBottom:16,padding:"12px 18px",background:T.accentGlow,border:`1px solid ${T.accent}22`,borderRadius:12,display:"flex",gap:16,alignItems:"center",flexWrap:"wrap",backdropFilter:"blur(8px)"}}>
+                {newTrade.symbol&&<div style={{display:"flex",alignItems:"center",gap:5}}>
+                  <span style={{fontSize:11,color:T.textMuted}}>Sembol:</span>
+                  <span style={{fontSize:13,fontWeight:700,color:T.text,fontFamily:"'JetBrains Mono',monospace"}}>{newTrade.symbol}</span>
+                </div>}
+                {newTrade.direction&&<span style={{fontSize:11,padding:"3px 10px",borderRadius:5,background:newTrade.direction==="Long"?T.greenGlow:T.redGlow,color:newTrade.direction==="Long"?T.green:T.red,fontWeight:700,border:`1px solid ${newTrade.direction==="Long"?T.green:T.red}22`}}>{newTrade.direction}</span>}
+                {newTrade.entryPrice&&<div style={{display:"flex",alignItems:"center",gap:5}}>
+                  <span style={{fontSize:11,color:T.textMuted}}>Giriş:</span>
+                  <span style={{fontSize:13,fontWeight:700,color:T.accent,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.entryPrice).toFixed(parseFloat(newTrade.entryPrice)<1?6:2)}</span>
+                </div>}
+                {newTrade.amount&&<div style={{display:"flex",alignItems:"center",gap:5}}>
+                  <span style={{fontSize:11,color:T.textMuted}}>Miktar:</span>
+                  <span style={{fontSize:13,fontWeight:700,color:T.textSecondary,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.amount).toFixed(0)}</span>
+                </div>}
+                {newTrade.stopLoss&&<div style={{display:"flex",alignItems:"center",gap:5}}>
+                  <span style={{fontSize:11,color:T.textMuted}}>SL:</span>
+                  <span style={{fontSize:12,fontWeight:700,color:T.red,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.stopLoss).toFixed(2)}</span>
+                </div>}
+                {newTrade.tp1&&<div style={{display:"flex",alignItems:"center",gap:5}}>
+                  <span style={{fontSize:11,color:T.textMuted}}>TP1:</span>
+                  <span style={{fontSize:12,fontWeight:700,color:T.green,fontFamily:"'JetBrains Mono',monospace"}}>${parseFloat(newTrade.tp1).toFixed(2)}</span>
+                </div>}
+                {newTrade.leverage&&newTrade.leverage!=="1x"&&<span style={{fontSize:11,padding:"3px 8px",borderRadius:5,background:T.goldGlow,color:T.gold,fontWeight:700,border:`1px solid ${T.gold}22`}}>{newTrade.leverage}</span>}
+                <div style={{marginLeft:"auto",fontSize:11,color:T.textMuted,display:"flex",alignItems:"center",gap:4}}>
+                  <span style={{width:7,height:7,borderRadius:"50%",background:newTrade.status==="Acik"?T.gold:T.green,display:"inline-block",boxShadow:`0 0 6px ${newTrade.status==="Acik"?T.gold:T.green}`}}/>
+                  {newTrade.status==="Acik"?"Açık Pozisyon":"Kapalı"}
+                </div>
               </div>
             )}
             <div style={{display:"grid",gap:14}}>
@@ -2523,13 +2543,62 @@ export default function CryptoPortfolio() {
               </div>
 
               {/* SL & TP */}
-              <div style={{...st.card,borderLeft:`3px solid #10b981`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>🎯 Stop Loss & Take Profit</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Stop Loss</div><input type="number" value={newTrade.stopLoss} onChange={e=>setNewTrade(p=>({...p,stopLoss:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.red}33`,borderRadius:8,color:T.red,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Take Profit 1</div><input type="number" value={newTrade.tp1} onChange={e=>setNewTrade(p=>({...p,tp1:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.green}33`,borderRadius:8,color:T.green,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Take Profit 2</div><input type="number" value={newTrade.tp2} onChange={e=>setNewTrade(p=>({...p,tp2:e.target.value}))} placeholder="Opsiyonel" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Take Profit 3</div><input type="number" value={newTrade.tp3} onChange={e=>setNewTrade(p=>({...p,tp3:e.target.value}))} placeholder="Opsiyonel" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
+              <div style={{...st.card,borderLeft:`3px solid #10b981`,background:T.bgCard}}>
+                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:16,display:"flex",alignItems:"center",gap:8}}>🎯 Stop Loss & Take Profit</div>
+
+                {/* Stop Loss */}
+                <div style={{marginBottom:16,padding:"12px 14px",background:T.redGlow,border:`1px solid ${T.red}22`,borderRadius:10}}>
+                  <div style={{fontSize:11,fontWeight:700,color:T.red,marginBottom:8,textTransform:"uppercase",letterSpacing:.5,display:"flex",alignItems:"center",gap:6}}>
+                    🛑 Stop Loss
+                    {newTrade.stopLoss && newTrade.entryPrice && parseFloat(newTrade.entryPrice)>0 && (
+                      <span style={{fontSize:11,padding:"1px 8px",borderRadius:4,background:T.red+"22",color:T.red,fontWeight:700,marginLeft:4}}>
+                        {(((parseFloat(newTrade.stopLoss)-parseFloat(newTrade.entryPrice))/parseFloat(newTrade.entryPrice))*100).toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
+                  <input type="number" value={newTrade.stopLoss} onChange={e=>setNewTrade(p=>({...p,stopLoss:e.target.value}))} placeholder="0.00"
+                    style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.red}44`,borderRadius:8,color:T.red,fontSize:14,fontWeight:600,outline:"none",fontFamily:"'JetBrains Mono',monospace",transition:"border-color .2s"}}
+                    onFocus={e=>e.target.style.borderColor=T.red+"88"} onBlur={e=>e.target.style.borderColor=T.red+"44"}/>
+                </div>
+
+                {/* Take Profit 1 / 2 / 3 */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+                  {[
+                    {n:1,key:"tp1",amtKey:"tp1Amount",color:"#22C55E",label:"TP 1"},
+                    {n:2,key:"tp2",amtKey:"tp2Amount",color:"#10B981",label:"TP 2"},
+                    {n:3,key:"tp3",amtKey:"tp3Amount",color:"#06B6D4",label:"TP 3"},
+                  ].map(tp => {
+                    const _p = parseFloat(newTrade[tp.key]||0);
+                    const _e = parseFloat(newTrade.entryPrice||0);
+                    const _a = parseFloat(newTrade[tp.amtKey]||0);
+                    const _lev = parseFloat(newTrade.leverage)||1;
+                    const _gain = _e>0&&_p>0 ? ((_p-_e)/_e*100*_lev) : 0;
+                    const _profit = _a>0&&_e>0&&_p>0 ? (newTrade.direction==="Long"?(_p-_e)/_e*_a*_lev:(_e-_p)/_e*_a*_lev) : 0;
+                    return (
+                      <div key={tp.n} style={{padding:"12px 14px",background:_p>0?tp.color+"0a":T.bgInput,border:`1px solid ${_p>0?tp.color+"33":T.border}`,borderRadius:10,transition:"all .2s"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                          <span style={{fontSize:11,fontWeight:700,color:_p>0?tp.color:T.textMuted,textTransform:"uppercase",letterSpacing:.5}}>{tp.label}</span>
+                          {_gain>0 && <span style={{fontSize:10,padding:"1px 7px",borderRadius:4,background:tp.color+"18",color:tp.color,fontWeight:700}}>+{_gain.toFixed(2)}%</span>}
+                        </div>
+                        <div style={{marginBottom:8}}>
+                          <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Fiyat</div>
+                          <input type="number" value={newTrade[tp.key]||""} onChange={e=>setNewTrade(p=>({...p,[tp.key]:e.target.value}))} placeholder="0.00"
+                            style={{width:"100%",padding:"8px 10px",background:T.bgInput,border:`1px solid ${tp.color}${_p>0?"55":"22"}`,borderRadius:7,color:_p>0?tp.color:T.text,fontSize:13,fontWeight:_p>0?700:400,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                        </div>
+                        <div>
+                          <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Miktar ($)</div>
+                          <input type="number" value={newTrade[tp.amtKey]||""} onChange={e=>setNewTrade(p=>({...p,[tp.amtKey]:e.target.value}))} placeholder="Opsiyonel"
+                            style={{width:"100%",padding:"8px 10px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:7,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                        </div>
+                        {_profit>0 && (
+                          <div style={{marginTop:8,padding:"6px 8px",background:tp.color+"0f",borderRadius:6,display:"flex",justifyContent:"space-between"}}>
+                            <span style={{fontSize:10,color:T.textMuted}}>Tahmini Kar:</span>
+                            <span style={{fontSize:12,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:tp.color}}>+${_profit.toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2578,13 +2647,13 @@ export default function CryptoPortfolio() {
           {/* ═══ ANALYTICS ═══ */}
           {tradeView==="analytics"&&(()=>{
             const totalVolume = trades.reduce((s,t)=>s+parseFloat(t.amount||0),0);
-            const totalVolumeAll = trades.reduce((s,t)=>s+parseFloat(t.amount||0),0);
-            const openPnl = trades.filter(t=>t.status==="Acik"&&t.entryPrice).reduce((s,t)=>{const cp=prices[t.symbol?.split("/")[0]?.toLowerCase()]?.usd||0;if(!cp)return s;const e=parseFloat(t.entryPrice),a=parseFloat(t.amount||0),l=parseFloat(t.leverage)||1;return s+(t.direction==="Long"?(cp-e)/e*a*l:(e-cp)/e*a*l);},0);
-            const avgDuration = closedTrades.length>0?Math.round(closedTrades.reduce((s,t)=>{const d=t.exitDate&&t.entryDate?((new Date(t.exitDate)-new Date(t.entryDate))/3600000):0;return s+d;},0)/closedTrades.length):0;
-            const byMarket = trades.reduce((acc,t)=>{acc[t.market||"Kripto"]=(acc[t.market||"Kripto"]||0)+1;return acc;},{});
-            const byDir = {Long:trades.filter(t=>t.direction==="Long").length,Short:trades.filter(t=>t.direction==="Short").length};
-            const monthlyPnl = closedTrades.reduce((acc,t)=>{const m=new Date(t.exitDate||t.entryDate).toLocaleDateString("tr-TR",{month:"short",year:"2-digit"});acc[m]=(acc[m]||0)+calcPnl(t);return acc;},{});
-            const monthlyArr = Object.entries(monthlyPnl).map(([m,v])=>({month:m,pnl:+v.toFixed(2)}));
+            var totalVolumeAll = trades.reduce((s,t)=>s+parseFloat(t.amount||0),0);
+            var openPnl = trades.filter(t=>t.status==="Acik"&&t.entryPrice).reduce((s,t)=>{const cp=prices[t.symbol?.split("/")[0]?.toLowerCase()]?.usd||0;if(!cp)return s;const e=parseFloat(t.entryPrice),a=parseFloat(t.amount||0),l=parseFloat(t.leverage)||1;return s+(t.direction==="Long"?(cp-e)/e*a*l:(e-cp)/e*a*l);},0);
+            var avgDuration = closedTrades.length>0?Math.round(closedTrades.reduce((s,t)=>{const d=t.exitDate&&t.entryDate?((new Date(t.exitDate)-new Date(t.entryDate))/3600000):0;return s+d;},0)/closedTrades.length):0;
+            var byMarket = trades.reduce((acc,t)=>{acc[t.market||"Kripto"]=(acc[t.market||"Kripto"]||0)+1;return acc;},{});
+            var byDir = {Long:trades.filter(t=>t.direction==="Long").length,Short:trades.filter(t=>t.direction==="Short").length};
+            var monthlyPnl = closedTrades.reduce((acc,t)=>{const m=new Date(t.exitDate||t.entryDate).toLocaleDateString("tr-TR",{month:"short",year:"2-digit"});acc[m]=(acc[m]||0)+calcPnl(t);return acc;},{});
+            var monthlyArr = Object.entries(monthlyPnl).map(([m,v])=>({month:m,pnl:+v.toFixed(2)}));
 
             return <div>
               {/* Ana KPI Kartları — büyük */}
@@ -2784,7 +2853,7 @@ export default function CryptoPortfolio() {
         {/* ═══ HABERLER ═══ */}
         {tab==="news"&&(()=>{
           // Portföy coinleri
-          const portfolioCoins = [...new Set(
+          var portfolioCoins = [...new Set(
             Object.values(portfolios).flat().map(p=>{
               const c=knownCoins.find(x=>x.id===p.coinId);
               return c?.symbol?.toUpperCase();
@@ -2792,12 +2861,12 @@ export default function CryptoPortfolio() {
           )].slice(0,15);
 
           // Filtrele
-          const filtered = newsFilter==="portfolio"
+          var filtered = newsFilter==="portfolio"
             ? newsData.filter(a=>a.isPortfolio || portfolioCoins.some(s=>a.title?.toUpperCase().includes(s)||(a.currencies||[]).includes(s)))
             : newsData;
 
-          const timeAgo = (ts) => {
-            const d=(Date.now()-ts)/1000;
+          var timeAgo = (ts) => {
+            var d=(Date.now()-ts)/1000;
             if(d<3600) return Math.floor(d/60)+" dk önce";
             if(d<86400) return Math.floor(d/3600)+" sa önce";
             return Math.floor(d/86400)+" gün önce";
