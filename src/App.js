@@ -2232,7 +2232,7 @@ export default function CryptoPortfolio() {
                 {/* ANA HESAP BLOĞU */}
                 {newTrade.entryPrice&&newTrade.stopLoss&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))>0
                   ? <div style={{background:`linear-gradient(135deg,rgba(212,160,23,.1),rgba(212,160,23,.04))`,border:`1px solid ${T.gold}44`,borderRadius:12,padding:18,marginBottom:14}}>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:14}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
                         {/* Birim Risk */}
                         <div style={{textAlign:"center"}}>
                           <div style={{fontSize:10,color:T.textMuted,marginBottom:4,fontWeight:500}}>Birim Risk</div>
@@ -2240,14 +2240,6 @@ export default function CryptoPortfolio() {
                             ${Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss)).toFixed(parseFloat(newTrade.entryPrice)<10?4:2)}
                           </div>
                           <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>|Entry − SL|</div>
-                        </div>
-                        {/* Kaç Birim Al */}
-                        <div style={{textAlign:"center"}}>
-                          <div style={{fontSize:10,color:T.textMuted,marginBottom:4,fontWeight:500}}>Alınacak Miktar</div>
-                          <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:"#3b82f6"}}>
-                            {(tradeR/Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))).toFixed(parseFloat(newTrade.entryPrice)>100?4:6)}
-                          </div>
-                          <div style={{fontSize:10,color:T.textMuted,marginTop:2}}>adet / lot</div>
                         </div>
                         {/* Toplam Pozisyon */}
                         <div style={{textAlign:"center",background:"rgba(212,160,23,.1)",borderRadius:8,padding:"8px 4px",border:`1px solid ${T.gold}33`}}>
@@ -2300,21 +2292,34 @@ export default function CryptoPortfolio() {
                           </div>
                         </div>
 
-                        {/* Görsel bar */}
-                        <div style={{display:"flex",gap:8,alignItems:"flex-end",marginBottom:12,height:52,paddingBottom:20,position:"relative"}}>
-                          {(entryCount===1?[[100,T.gold]]
-                            :entryCount===2?[[40,"#3b82f6"],[60,"#8B5CF6"]]
-                            :[[20,"#3b82f6"],[30,"#6366f1"],[50,"#8B5CF6"]]
-                          ).map(([pct,clr],i)=>(
-                            <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-                              <div style={{fontSize:10,fontWeight:700,color:clr}}>%{pct}</div>
-                              <div style={{width:"100%",borderRadius:"4px 4px 0 0",background:clr,
-                                height:(pct/100)*36+"px",
-                                boxShadow:`0 0 8px ${clr}44`,
-                                transition:"height .3s ease"}}/>
-                              <div style={{position:"absolute",bottom:0,fontSize:9,color:T.textMuted,fontWeight:600}}>E{i+1}</div>
-                            </div>
-                          ))}
+                        {/* Görsel bar — horizontal stacked */}
+                        <div style={{marginBottom:14}}>
+                          <div style={{display:"flex",height:44,borderRadius:10,overflow:"hidden",marginBottom:8,boxShadow:"0 2px 12px rgba(0,0,0,.15)"}}>
+                            {(entryCount===1?[[100,T.gold,"E1"]]
+                              :entryCount===2?[[40,"#3b82f6","E1"],[60,"#8B5CF6","E2"]]
+                              :[[20,"#3b82f6","E1"],[30,"#6366f1","E2"],[50,"#8B5CF6","E3"]]
+                            ).map(([pct,clr,lbl],i)=>(
+                              <div key={i} style={{width:pct+"%",background:`linear-gradient(135deg,${clr},${clr}cc)`,
+                                display:"flex",alignItems:"center",justifyContent:"center",gap:4,
+                                transition:"width .4s cubic-bezier(.22,1,.36,1)",
+                                borderRight:i<(entryCount-1)?"2px solid rgba(255,255,255,.15)":"none",
+                                boxShadow:`inset 0 1px 0 rgba(255,255,255,.2)`}}>
+                                <span style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,.95)",textShadow:"0 1px 3px rgba(0,0,0,.3)"}}>{lbl}</span>
+                                <span style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,.8)"}}>%{pct}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+                            {(entryCount===1?[[100,T.gold,"E1"]]
+                              :entryCount===2?[[40,"#3b82f6","E1"],[60,"#8B5CF6","E2"]]
+                              :[[20,"#3b82f6","E1"],[30,"#6366f1","E2"],[50,"#8B5CF6","E3"]]
+                            ).map(([pct,clr,lbl],i)=>(
+                              <div key={i} style={{display:"flex",alignItems:"center",gap:4}}>
+                                <div style={{width:8,height:8,borderRadius:2,background:clr,boxShadow:`0 0 6px ${clr}88`}}/>
+                                <span style={{fontSize:10,color:T.textMuted,fontWeight:600}}>{lbl} %{pct}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
 
                         {/* Açıklama */}
@@ -2389,28 +2394,7 @@ export default function CryptoPortfolio() {
                     </div>
                   </div>
                 )}
-                {/* R Çarpanları özeti */}
-                {newTrade.entryPrice&&newTrade.stopLoss&&parseFloat(newTrade.entryPrice)>0&&parseFloat(newTrade.stopLoss)>0&&(
-                  <div style={{padding:"10px 14px",background:T.bgInput,borderRadius:8,border:`1px solid ${T.border}`}}>
-                    <div style={{fontSize:10,color:T.textMuted,marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>R Tablosu</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                      {[-2,-1,-0.5,0.5,1,1.5,2,3,5].map(mult=>(
-                        <div key={mult} style={{flex:"1 1 80px",padding:"6px 8px",
-                          background:mult<0?"rgba(239,68,68,.06)":"rgba(34,197,94,.06)",
-                          border:`1px solid ${mult<0?T.red:T.green}22`,borderRadius:6,textAlign:"center"}}>
-                          <div style={{fontSize:10,fontWeight:700,color:mult<0?T.red:T.green}}>{mult>0?"+":""}{mult}R</div>
-                          <div style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:T.text,fontWeight:600}}>
-                            ${(newTrade.direction==="Long"
-                              ? parseFloat(newTrade.entryPrice)+Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*mult
-                              : parseFloat(newTrade.entryPrice)-Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*mult
-                            ).toFixed((parseFloat(newTrade.entryPrice)+Math.abs(parseFloat(newTrade.entryPrice)-parseFloat(newTrade.stopLoss))*mult)<10?4:2)}
-                          </div>
-                          <div style={{fontSize:10,color:mult<0?T.red+"aa":T.green+"aa"}}>{tradeR*mult>0?"+":""}{(tradeR*mult).toFixed(0)}$</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
               </div>
 
               {/* Entry 1 / 2 / 3 — Fiyat & Miktar yanyana */}
@@ -2706,14 +2690,13 @@ export default function CryptoPortfolio() {
               </div>
               <div style={{...st.card,padding:16}}>
                 <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>📊 Piyasa Dağılımı</div>
-                {Object.entries(tradesByMarket).map(([m,cnt])=>{
-                  const pct=trades.length>0?cnt/trades.length*100:0;
-                  return (<div key={m} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                {Object.entries(tradesByMarket).map(([m,cnt])=>(
+                  <div key={m} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                     <span style={{fontSize:12,color:T.textSecondary,minWidth:60}}>{m}</span>
-                    <div style={{flex:1,height:6,background:T.border,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:T.accent,borderRadius:3}}/></div>
-                    <span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:T.accent,minWidth:50,textAlign:"right"}}>{cnt} ({pct.toFixed(0)}%)</span>
-                  </div>);
-                })}
+                    <div style={{flex:1,height:6,background:T.border,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:(trades.length>0?cnt/trades.length*100:0)+"%",background:T.accent,borderRadius:3}}/></div>
+                    <span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:T.accent,minWidth:50,textAlign:"right"}}>{cnt} ({(trades.length>0?cnt/trades.length*100:0).toFixed(0)}%)</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>}
