@@ -2084,6 +2084,47 @@ export default function CryptoPortfolio() {
               </div>
             </div>
           </div>
+
+          {/* 🔥 En Çok Yükselen & Düşenler */}
+          {allPData.length>1&&(()=>{
+            const sorted=[...allPData].filter(x=>x.currentPrice>0).sort((a,b)=>b.change24h-a.change24h);
+            const gainers=sorted.slice(0,5);
+            const losers=[...sorted].reverse().slice(0,5);
+            if(sorted.length===0) return null;
+            const renderItem=(item,i,max)=>{
+              const mc=getMarketColor(getMarketType(item.coinId));
+              const isUp=item.change24h>=0;
+              const absPct=Math.abs(item.change24h);
+              const maxPct=Math.max(...sorted.map(x=>Math.abs(x.change24h)),1);
+              const barW=Math.max((absPct/maxPct)*100,2);
+              return(<div key={item.coinId} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<max-1?`1px solid ${T.bgCardSolid}`:"none"}}>
+                <div style={{width:26,height:26,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,fontFamily:"'Inter',monospace",background:mc+"18",color:mc}}>{item.coin?.symbol?.charAt(0)||"?"}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:4}}>
+                    <span style={{fontWeight:600,fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.coin?.symbol}</span>
+                    <span style={{fontSize:7,padding:"1px 3px",borderRadius:2,background:mc+"15",color:mc,fontWeight:700}}>{getMarketLabel(getMarketType(item.coinId))}</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
+                    <div style={{flex:1,height:3,background:T.border,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:barW+"%",background:isUp?T.green:T.red,borderRadius:2,transition:"width .5s"}}/></div>
+                  </div>
+                </div>
+                <div style={{textAlign:"right",minWidth:80}}>
+                  <div style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:isUp?T.green:T.red}}>{isUp?"▲":"▼"} {absPct.toFixed(2)}%</div>
+                  <div style={{fontSize:10,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{fmt(item.currentValue)}</div>
+                </div>
+              </div>);
+            };
+            return(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+              <div style={{...st.card,padding:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🚀</span><span style={{fontSize:13,fontWeight:600,color:T.green}}>En Çok Yükselen</span><span style={{fontSize:10,color:T.textMuted}}>(24s)</span></div>
+                {gainers.map((item,i)=>renderItem(item,i,gainers.length))}
+              </div>
+              <div style={{...st.card,padding:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>📉</span><span style={{fontSize:13,fontWeight:600,color:T.red}}>En Çok Düşen</span><span style={{fontSize:10,color:T.textMuted}}>(24s)</span></div>
+                {losers.map((item,i)=>renderItem(item,i,losers.length))}
+              </div>
+            </div>);
+          })()}
         </div>}
 
         {/* ═══ REPORTS ═══ */}
