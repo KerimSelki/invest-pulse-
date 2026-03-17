@@ -19,6 +19,102 @@ const Spark = ({data,color}) => (<ResponsiveContainer width={100} height={36}><A
 
 // ═══ Coin Search/Picker Component ═══
 const searchCache = {};
+// ═══ Animasyonlu Donut Chart ═══
+const DonutChart = ({ data, total, themeColors }) => {
+  const [hovered, setHovered] = useState(null);
+  const [animated, setAnimated] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setAnimated(true), 120); return () => clearTimeout(t); }, []);
+  const size = 220, cx = 110, cy = 110, outerR = 88, innerR = 54;
+  const tau = 2 * Math.PI;
+  const top = data.slice(0, 10);
+  const otherVal = data.slice(10).reduce((s, d) => s + d.value, 0);
+  const chartData = otherVal > 0 ? [...top, { name: "Diğer", value: otherVal, color: "#4A4D65" }] : top;
+  let cum = -Math.PI / 2;
+  const slices = chartData.map(item => {
+    const angle = total > 0 ? (item.value / total) * tau : 0;
+    const s = cum; cum += angle;
+    return { ...item, startAngle: s, endAngle: cum, angle };
+  });
+  const p2c = (r, a) => ({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+  const arc = (sl, ex = 0) => {
+    const R = outerR + ex, r = innerR - (ex > 0 ? 2 : 0);
+    const s = p2c(R, sl.startAngle), e = p2c(R, sl.endAngle);
+    const is = p2c(r, sl.startAngle), ie = p2c(r, sl.endAngle);
+    const lg = sl.angle > Math.PI ? 1 : 0;
+    return `M${s.x} ${s.y} A${R} ${R} 0 ${lg} 1 ${e.x} ${e.y} L${ie.x} ${ie.y} A${r} ${r} 0 ${lg} 0 ${is.x} ${is.y}Z`;
+  };
+  const hsl = hovered !== null ? slices[hovered] : null;
+  const T = themeColors;
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:0}}>
+      <div style={{position:"relative",width:size,height:size,margin:"0 auto"}}>
+        <svg width={size} height={size} style={{overflow:"visible"}}>
+          <defs>
+            {slices.map((s,i)=>(
+              <radialGradient key={i} id={`dg${i}`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor={s.color} stopOpacity="0.75"/>
+                <stop offset="100%" stopColor={s.color} stopOpacity="1"/>
+              </radialGradient>
+            ))}
+            <filter id="sliceGlow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          {slices.map((sl,i)=>{
+            const isH = hovered===i;
+            return (
+              <path key={i} d={arc(sl, isH?9:0)}
+                fill={`url(#dg${i})`}
+                stroke={isH?"#ffffff":"transparent"} strokeWidth={isH?1.5:0}
+                filter={isH?"url(#sliceGlow)":"none"}
+                style={{cursor:"pointer",transition:"d .22s cubic-bezier(.22,1,.36,1),filter .15s",opacity:animated?1:0,transformOrigin:`${cx}px ${cy}px`}}
+                onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
+              />
+            );
+          })}
+          <circle cx={cx} cy={cy} r={innerR+1} fill="rgba(0,0,0,0.35)"/>
+          <circle cx={cx} cy={cy} r={innerR} fill="#0B0D15"/>
+        </svg>
+        {/* Merkez */}
+        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",transition:"all .2s"}}>
+          {hsl ? (
+            <>
+              <div style={{width:28,height:28,borderRadius:7,background:hsl.color+"22",border:`1px solid ${hsl.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:hsl.color,marginBottom:4,fontFamily:"'Inter',sans-serif"}}>{hsl.name.charAt(0)}</div>
+              <div style={{fontSize:11,color:"#6B6F8A",marginBottom:2,fontFamily:"'Inter',sans-serif"}}>{hsl.name}</div>
+              <div style={{fontSize:24,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:hsl.color,lineHeight:1}}>{total>0?((hsl.value/total)*100).toFixed(1):0}%</div>
+              <div style={{fontSize:10,color:"#4A4D65",marginTop:3,fontFamily:"'JetBrains Mono',monospace"}}>{total>0?(hsl.value>=1000?"$"+(hsl.value/1000).toFixed(1)+"K":"$"+hsl.value.toFixed(0)):""}</div>
+            </>
+          ) : (
+            <>
+              <div style={{fontSize:9,color:"#4A4D65",marginBottom:2,fontFamily:"'Inter',sans-serif",textTransform:"uppercase",letterSpacing:1}}>Toplam</div>
+              <div style={{fontSize:16,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"#E8E9ED"}}>{total>=1000000?"$"+(total/1000000).toFixed(2)+"M":total>=1000?"$"+(total/1000).toFixed(1)+"K":"$"+total.toFixed(0)}</div>
+              <div style={{fontSize:9,color:"#4A4D65",marginTop:3,fontFamily:"'Inter',sans-serif"}}>{data.length} varlık</div>
+            </>
+          )}
+        </div>
+      </div>
+      {/* Legend */}
+      <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:4,maxHeight:210,overflowY:"auto"}}>
+        {slices.map((item,i)=>{
+          const pct = total>0?(item.value/total)*100:0;
+          const isH = hovered===i;
+          return (
+            <div key={i} onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
+              style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:8,background:isH?item.color+"12":"transparent",border:`1px solid ${isH?item.color+"33":"transparent"}`,cursor:"pointer",transition:"all .15s"}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:item.color,flexShrink:0,boxShadow:isH?`0 0 8px ${item.color}`:"none",transition:"box-shadow .2s"}}/>
+              <span style={{flex:1,fontSize:12,color:isH?"#E8E9ED":"#8B8EA0",fontWeight:isH?600:400,fontFamily:"'Inter',sans-serif",transition:"color .15s",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.name}</span>
+              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                <div style={{width:44,height:3,background:"#1E2035",borderRadius:2,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${pct}%`,background:item.color,borderRadius:2,transition:"width .4s ease"}}/>
+                </div>
+                <span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:isH?item.color:"#4A4D65",fontWeight:600,minWidth:32,textAlign:"right",transition:"color .15s"}}>{pct.toFixed(1)}%</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const CoinPicker = ({ value, onChange, prices, savedKey, knownCoins, fmpStocks }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -31,7 +127,7 @@ const CoinPicker = ({ value, onChange, prices, savedKey, knownCoins, fmpStocks }
 
   useEffect(() => {
     const found = knownCoins.find(c => c.id === value);
-    if (found) setSelected(found);
+    if (found) { setSelected(found); setIsOpen(false); setQuery(""); }
   }, [value, knownCoins]);
 
   useEffect(() => {
@@ -658,6 +754,12 @@ export default function CryptoPortfolio() {
   const [newTxPrice, setNewTxPrice] = useState("");
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().slice(0,16));
 
+  // ── Trade Sembol Autocomplete ──
+  const [symQ, setSymQ] = useState("");
+  const [symOpen, setSymOpen] = useState(false);
+  const [symResults, setSymResults] = useState([]);
+  const symRef = useRef(null);
+
   // ── Haber Akışı ──
   const [newsData, setNewsData] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
@@ -678,6 +780,13 @@ export default function CryptoPortfolio() {
   useEffect(() => { try { localStorage.setItem("ip_trade_kasa", String(tradeKasa)); } catch(e) {} }, [tradeKasa]);
   useEffect(() => { try { localStorage.setItem("ip_goals", JSON.stringify(goals)); } catch(e) {} }, [goals]);
   useEffect(() => { try { localStorage.setItem("ip_transactions", JSON.stringify(transactions)); } catch(e) {} }, [transactions]);
+
+  // Sembol autocomplete dışarı tıklanınca kapat
+  useEffect(() => {
+    const h = (e) => { if (symRef.current && !symRef.current.contains(e.target)) setSymOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
 
   // Modal açıldığında tx form state'lerini sıfırla + fiyatı doldur
   useEffect(() => {
@@ -742,7 +851,7 @@ export default function CryptoPortfolio() {
   const profitFactor = avgLoss>0?(avgWin*winTrades.length)/(avgLoss*lossTrades.length):0;
   const maxDrawdown = (() => { let peak=0,dd=0,maxDd=0; closedTrades.sort((a,b)=>new Date(a.exitDate)-new Date(b.exitDate)).forEach(t=>{const eq=peak+calcPnl(t);if(eq>peak)peak=eq;dd=peak-eq;if(dd>maxDd)maxDd=dd;}); return maxDd; })();
 
-  const resetNewTrade = () => setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""});
+  const resetNewTrade = () => { setSymQ(""); setSymOpen(false); setSymResults([]); setNewTrade({symbol:"",market:"Kripto",exchange:"Bybit",direction:"Long",status:"Acik",leverage:"1x",entryPrice:"",exitPrice:"",amount:"100",entry1Price:"",entry1Amount:"",entry2Price:"",entry2Amount:"",stopLoss:"",tp1:"",tp2:"",tp3:"",entryDate:new Date().toISOString().slice(0,16),exitDate:"",strategy:"",tags:"",notes:"",score:5,setupQuality:"B Orta",execution:5,followedPlan:true,setupType:"",emotion:"",mistakes:"",successes:"",lessons:""}); };
 
   const saveTrade = () => {
     const t = editTrade !== null ? {...newTrade, id: trades[editTrade].id} : {...newTrade, id: Date.now()};
@@ -1807,9 +1916,10 @@ export default function CryptoPortfolio() {
           </div>
           <div style={{display:"grid",gridTemplateColumns:pieData.length>0?"260px 1fr":"1fr",gap:18}}>
             <div style={st.card}>
-              <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Dağılım</h3>
-              {pieData.length>0?<><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">{pieData.map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip formatter={v=>fmt(v)} contentStyle={st.tt}/></PieChart></ResponsiveContainer>
-              <div style={{marginTop:8}}>{pieData.map((item,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${T.bgCardSolid}`}}><span style={{width:8,height:8,borderRadius:2,background:item.color,flexShrink:0}}/><span style={{flex:1,fontSize:12,color:T.textSecondary}}>{item.name}</span><span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>{totVal>0?((item.value/totVal)*100).toFixed(1):0}%</span></div>)}</div></>:<div style={{textAlign:"center",padding:40,color:T.textMuted}}>Portföye varlık ekleyin</div>}
+              <h3 style={{fontSize:14,fontWeight:600,marginBottom:16}}>Dağılım</h3>
+              {pieData.length>0
+                ? <DonutChart data={pieData} total={totVal} themeColors={T}/>
+                : <div style={{textAlign:"center",padding:40,color:T.textMuted}}>Portföye varlık ekleyin</div>}
             </div>
             <div style={st.card}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h3 style={{fontSize:15,fontWeight:600}}>Varlıklar</h3><button onClick={()=>{setEditIdx(null);setNcCoin(null);setNcAmount("");setNcBuyPrice("");setNcSection("Genel");setShowAdd(true);}} style={{padding:"7px 14px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:8,color:T.text,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Ekle</button></div>
@@ -2068,9 +2178,8 @@ export default function CryptoPortfolio() {
           {/* Dağılım + Tüm Varlıklar */}
           <div style={{display:"grid",gridTemplateColumns:allPData.length>0?"260px 1fr":"1fr",gap:18}}>
             {allPData.length>0&&<div style={st.card}>
-              <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Dağılım</h3>
-              <ResponsiveContainer width="100%" height={200}><PieChart><Pie data={allPieData.slice(0,12)} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">{allPieData.slice(0,12).map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip formatter={v=>[fmt(v),""]} contentStyle={st.tt}/></PieChart></ResponsiveContainer>
-              <div style={{marginTop:8,maxHeight:180,overflowY:"auto"}}>{allPieData.map((item,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${T.bgCardSolid}`}}><span style={{width:8,height:8,borderRadius:2,background:item.color,flexShrink:0}}/><span style={{flex:1,fontSize:12,color:T.textSecondary}}>{item.name}</span><span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:"#9333EA"}}>{allTotVal>0?((item.value/allTotVal)*100).toFixed(1):0}%</span></div>)}</div>
+              <h3 style={{fontSize:14,fontWeight:600,marginBottom:16}}>Dağılım</h3>
+              <DonutChart data={allPieData} total={allTotVal} themeColors={T}/>
             </div>}
             <div style={st.card}>
               <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Tüm Varlıklar</h3>
@@ -2168,24 +2277,52 @@ export default function CryptoPortfolio() {
           {/* ═══ ADD/EDIT TRADE ═══ */}
           {tradeView==="add"&&<div>
             <div style={{display:"grid",gap:16}}>
-              {/* Risk Yönetimi */}
-              <div style={{...st.card,borderLeft:`3px solid ${T.gold}`}}>
-                <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>🛡 Risk Yönetimi</div>
-                <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Toplam Kasa (USDT)</div><input value={tradeKasa} onChange={e=>setTradeKasa(parseFloat(e.target.value)||0)} style={{padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.gold,fontSize:14,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",outline:"none",width:150}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Risk % (Kasanın)</div><div style={{display:"flex",gap:4}}>{["0.5","1","1.5","2","3","5"].map(r=><button key={r} onClick={()=>setNewTrade(p=>({...p,amount:String((tradeKasa*parseFloat(r)/100).toFixed(2))}))} style={{padding:"6px 10px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:6,color:T.text,fontSize:11,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace"}}>%{r}</button>)}</div></div>
-                </div>
-              </div>
-
               {/* Trade Bilgileri */}
               <div style={{...st.card,borderLeft:`3px solid ${T.accent}`}}>
                 <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>📈 Trade Bilgileri</div>
+                {/* Sembol — autocomplete arama */}
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:11,color:T.textMuted,marginBottom:6,fontWeight:500,textTransform:"uppercase",letterSpacing:.5}}>Sembol Ara</div>
+                  <div ref={symRef} style={{position:"relative"}}>
+                    <input value={symQ||newTrade.symbol}
+                      onChange={e=>{
+                        const q=e.target.value;
+                        setSymQ(q);
+                        setNewTrade(p=>({...p,symbol:q.toUpperCase()}));
+                        if(!q||q.length<1){setSymResults([]);setSymOpen(false);return;}
+                        const ql=q.toLowerCase();
+                        const r=knownCoins.filter(c=>c.name.toLowerCase().includes(ql)||c.symbol.toLowerCase().includes(ql)).slice(0,8);
+                        setSymResults(r);
+                        setSymOpen(r.length>0);
+                      }}
+                      onFocus={()=>{if((symQ||newTrade.symbol).length>0&&symResults.length>0)setSymOpen(true);}}
+                      onBlur={()=>setTimeout(()=>setSymOpen(false),180)}
+                      placeholder="ETH, BTC/USDT, THYAO..."
+                      style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${symOpen?"#9333EA44":T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'Inter',sans-serif",transition:"border-color .2s"}}
+                    />
+                    {symOpen && symResults.length>0 && (
+                      <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,borderRadius:10,zIndex:200,boxShadow:"0 12px 40px rgba(0,0,0,.5)",maxHeight:240,overflowY:"auto"}}>
+                        {symResults.map((c,i)=>(
+                          <div key={c.id} onMouseDown={()=>{ setSymQ(c.symbol); setNewTrade(p=>({...p,symbol:c.symbol+"/USDT"})); setSymOpen(false); }}
+                            style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",cursor:"pointer",borderBottom:`1px solid ${T.border}`,transition:"background .15s"}}
+                            onMouseEnter={e=>e.currentTarget.style.background="#1E2035"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                            <div style={{width:28,height:28,borderRadius:7,background:"#9333EA18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#9333EA"}}>{c.symbol?.charAt(0)}</div>
+                            <div>
+                              <div style={{fontSize:13,fontWeight:600,color:T.text}}>{c.name}</div>
+                              <div style={{fontSize:11,color:T.textMuted,fontFamily:"'JetBrains Mono',monospace"}}>{c.symbol}</div>
+                            </div>
+                            {prices[c.id]?.usd>0&&<div style={{marginLeft:"auto",fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:T.textSecondary}}>${prices[c.id].usd<1?prices[c.id].usd.toFixed(4):prices[c.id].usd.toFixed(2)}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Sembol</div><input value={newTrade.symbol} onChange={e=>setNewTrade(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="BTC/USDT" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'Inter',sans-serif"}} /></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Piyasa Türü</div><select value={newTrade.market} onChange={e=>setNewTrade(p=>({...p,market:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Kripto</option><option>Forex</option><option>Hisse</option><option>Emtia</option></select></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Borsa</div><select value={newTrade.exchange} onChange={e=>setNewTrade(p=>({...p,exchange:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option>Bybit</option><option>Binance</option><option>OKX</option><option>Gate.io</option><option>Coinbase</option><option>Diger</option></select></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Yön</div><div style={{display:"flex",gap:6}}>{["Long","Short"].map(d=><button key={d} onClick={()=>setNewTrade(p=>({...p,direction:d}))} style={{flex:1,padding:"10px",background:newTrade.direction===d?(d==="Long"?"#22C55E18":"#EF444418"):T.bgInput,border:`1px solid ${newTrade.direction===d?(d==="Long"?"#22C55E44":"#EF444444"):T.border}`,borderRadius:8,color:newTrade.direction===d?(d==="Long"?"#22C55E":"#EF4444"):T.textMuted,fontSize:13,fontWeight:600,cursor:"pointer"}}>{d}</button>)}</div></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Durum</div><select value={newTrade.status} onChange={e=>setNewTrade(p=>({...p,status:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}><option value="Acik">Açık</option><option value="Kapali">Kapalı</option></select></div>
+                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Yön</div><div style={{display:"flex",gap:6}}>{["Long","Short"].map(d=><button key={d} onClick={()=>setNewTrade(p=>({...p,direction:d}))} style={{flex:1,padding:"10px",background:newTrade.direction===d?(d==="Long"?"#22C55E18":"#EF444418"):T.bgInput,border:`1px solid ${newTrade.direction===d?(d==="Long"?"#22C55E44":"#EF444444"):T.border}`,borderRadius:8,color:newTrade.direction===d?(d==="Long"?"#22C55E":"#EF4444"):T.textMuted,fontSize:13,fontWeight:600,cursor:"pointer"}}>{d}</button>)}</div></div>
                   <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Kaldıraç</div><select value={newTrade.leverage} onChange={e=>setNewTrade(p=>({...p,leverage:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none"}}>{["1x","2x","3x","5x","10x","20x","25x","50x","75x","100x","125x"].map(l=><option key={l}>{l}</option>)}</select></div>
                 </div>
               </div>
@@ -2194,9 +2331,69 @@ export default function CryptoPortfolio() {
               <div style={{...st.card,borderLeft:`3px solid #3b82f6`}}>
                 <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>💲 Fiyat & Pozisyon</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Giriş Fiyatı</div><input type="number" value={newTrade.entryPrice} onChange={e=>setNewTrade(p=>({...p,entryPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Çıkış Fiyatı</div><input type="number" value={newTrade.exitPrice} onChange={e=>setNewTrade(p=>({...p,exitPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
-                  <div><div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Kontrat Miktarı (USDT)</div><input type="number" value={newTrade.amount} onChange={e=>setNewTrade(p=>({...p,amount:e.target.value}))} placeholder="100" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}} /></div>
+                  <div>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Giriş Fiyatı</div>
+                    <input type="number" value={newTrade.entryPrice} onChange={e=>setNewTrade(p=>({...p,entryPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:4}}>Çıkış Fiyatı</div>
+                    <input type="number" value={newTrade.exitPrice} onChange={e=>setNewTrade(p=>({...p,exitPrice:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"10px 12px",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:13,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                  </div>
+                </div>
+                {/* Entry 1 / Entry 2 / Ortalama Fiyat */}
+                <div style={{marginTop:12,padding:14,background:T.bgInput,borderRadius:10,border:`1px solid ${T.border}`}}>
+                  <div style={{fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>📊 Ortalama Maliyet Hesapla</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10,alignItems:"flex-end"}}>
+                    <div>
+                      <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Entry 1 — Fiyat</div>
+                      <input type="number" value={newTrade.entry1Price||""} onChange={e=>setNewTrade(p=>({...p,entry1Price:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:12,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                    </div>
+                    <div>
+                      <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Entry 1 — Miktar ($)</div>
+                      <input type="number" value={newTrade.entry1Amount||""} onChange={e=>setNewTrade(p=>({...p,entry1Amount:e.target.value}))} placeholder="100" style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:12,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                    </div>
+                    <div>
+                      <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Entry 2 — Fiyat</div>
+                      <input type="number" value={newTrade.entry2Price||""} onChange={e=>setNewTrade(p=>({...p,entry2Price:e.target.value}))} placeholder="0.00" style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:12,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                    </div>
+                    <div>
+                      <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>Entry 2 — Miktar ($)</div>
+                      <input type="number" value={newTrade.entry2Amount||""} onChange={e=>setNewTrade(p=>({...p,entry2Amount:e.target.value}))} placeholder="100" style={{width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:7,color:T.text,fontSize:12,outline:"none",fontFamily:"'JetBrains Mono',monospace"}}/>
+                    </div>
+                  </div>
+                  {/* Hesaplanmış ortalama */}
+                  {(() => {
+                    const e1p = parseFloat(newTrade.entry1Price||0);
+                    const e1a = parseFloat(newTrade.entry1Amount||0);
+                    const e2p = parseFloat(newTrade.entry2Price||0);
+                    const e2a = parseFloat(newTrade.entry2Amount||0);
+                    if (e1p > 0 && e1a > 0) {
+                      const totalAmt = e1a + (e2a > 0 ? e2a : 0);
+                      const qty1 = e1a / e1p;
+                      const qty2 = e2p > 0 && e2a > 0 ? e2a / e2p : 0;
+                      const totalQty = qty1 + qty2;
+                      const avgPrice = totalQty > 0 ? totalAmt / totalQty : 0;
+                      return (
+                        <div style={{marginTop:12,display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
+                          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                            <span style={{fontSize:11,color:T.textMuted}}>Toplam Miktar:</span>
+                            <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:T.text}}>${totalAmt.toFixed(2)}</span>
+                          </div>
+                          {avgPrice > 0 && <>
+                            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                              <span style={{fontSize:11,color:T.textMuted}}>Ort. Fiyat:</span>
+                              <span style={{fontSize:14,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:"#9333EA"}}>${avgPrice < 1 ? avgPrice.toFixed(6) : avgPrice.toFixed(4)}</span>
+                            </div>
+                            <button onClick={()=>setNewTrade(p=>({...p,entryPrice:avgPrice.toFixed(avgPrice<1?6:4),amount:String(totalAmt)}))}
+                              style={{padding:"6px 14px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:6,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                              ↑ Giriş Fiyatına Uygula
+                            </button>
+                          </>}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
 
