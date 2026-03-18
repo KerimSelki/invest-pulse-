@@ -1031,6 +1031,15 @@ export default function CryptoPortfolio() {
 
   // ══ MAIN FETCH: Binance (all) + CoinGecko (top 250 + specific) ══
   const fetchPrices = useCallback(async (isRetry = false) => {
+    // Önce cache'den anlık yükle (API beklemeden göster)
+    try {
+      const cached = JSON.parse(localStorage.getItem("ip_stock_prices") || "{}");
+      const now = Date.now();
+      const fresh = Object.fromEntries(Object.entries(cached).filter(([,v]) => (now - (v._ts||0)) < 3600000)); // 1 saat geçerliliği
+      if (Object.keys(fresh).length > 0) {
+        setPrices(prev => ({ ...prev, ...fresh }));
+      }
+    } catch(e) {}
     if (!isRetry) setConnStatus("connecting");
     try {
       const allPrices = {};
@@ -1128,17 +1137,20 @@ export default function CryptoPortfolio() {
         }
       }
 
-      // 4) Hisse/ETF — BIST için Yahoo (Vercel proxy), US için FMP
-      const FMP_KEY = "00rEssEWw276o3NRJY1BcLH1ACQGb1D6";
+      // 4) Hisse/ETF — portföy + aktif tradeler + eksikler hepsi
       const portfolioStockIds = [...new Set(Object.values(portfolios).flat().map(p=>p.coinId).filter(id=>isStock(id)))];
-      const allStockIds = Object.keys(STOCK_DATA);
-      const stocksToFetch = [...new Set([...portfolioStockIds, ...allStockIds.slice(0, 80)])];
-
+      // Aktif trade'lerdeki hisse sembollerini de ekle
+      const tradeStockIds = [...new Set(
+        JSON.parse(localStorage.getItem("ip_trades")||"[]")
+          .map(t=>t.symbol?.replace("/USDT","")?.replace("/USD","")?.split("/")[0])
+          .filter(s=>s&&isStock(s))
+      )];
+      const allStocksToFetch = [...new Set([...portfolioStockIds, ...tradeStockIds, ...stockMissing])];
       // BIST (.IS) ve US hisselerini ayır
-      const bistStocks = stocksToFetch.filter(s => s.endsWith(".IS"));
-      const usStocks = stocksToFetch.filter(s => !s.endsWith(".IS") && !s.endsWith(".TEFAS"));
+      const bistStocks = allStocksToFetch.filter(s => s.endsWith(".IS"));
+      const usStocks = allStocksToFetch.filter(s => !s.endsWith(".IS") && !s.endsWith(".TEFAS"));
 
-      if (stocksToFetch.length > 0) {
+      if (allStocksToFetch.length > 0) {
         const results = {};
         let stockSource = "";
 
@@ -1210,16 +1222,19 @@ export default function CryptoPortfolio() {
           try {
             const prev = JSON.parse(localStorage.getItem("ip_stock_prices") || "{}");
             const updated = { ...prev };
-            Object.entries(results).forEach(([id, v]) => { updated[id] = { ...v, _ts: Date.now() }; });
+            const ts = Date.now();
+            Object.entries(results).forEach(([id, v]) => { updated[id] = { ...v, _ts: ts }; });
             localStorage.setItem("ip_stock_prices", JSON.stringify(updated));
+            console.log(`[Stock Cache] ${Object.keys(results).length} hisse kaydedildi`);
           } catch(e) {}
         } else {
-          // Load from cache
+          // Cache'den yükle (API başarısız olduğunda)
           try {
             const cached = JSON.parse(localStorage.getItem("ip_stock_prices") || "{}");
-            if (Object.keys(cached).length > 0) {
-              Object.entries(cached).forEach(([id, v]) => { if (!allPrices[id]) allPrices[id] = v; });
-              source += ` + StockCache: ${Object.keys(cached).length}`;
+            const freshCached = Object.fromEntries(Object.entries(cached).filter(([,v]) => (Date.now()-(v._ts||0))<3600000));
+            if (Object.keys(freshCached).length > 0) {
+              Object.entries(freshCached).forEach(([id, v]) => { if (!allPrices[id]) allPrices[id] = v; });
+              source += ` + Cache: ${Object.keys(freshCached).length}`;
             }
           } catch(e) {}
           log("price", false, "Hisse/Fon: API erişilemedi, cache kullanıldı");
