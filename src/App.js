@@ -1142,31 +1142,32 @@ export default function CryptoPortfolio() {
         const results = {};
         let stockSource = "";
 
-        // A) US hisseleri → FMP API (CORS-free, hızlı)
+        // A) US hisseleri → /api/stocks (Yahoo Finance → Twelve Data → Finnhub)
         if (usStocks.length > 0) {
           for (let i = 0; i < usStocks.length; i += 50) {
             const batch = usStocks.slice(i, i + 50);
             try {
-              const url = `https://financialmodelingprep.com/api/v3/quote/${batch.join(",")}?apikey=${FMP_KEY}`;
-              const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-              if (res.ok) {
-                const data = await res.json();
-                if (Array.isArray(data)) {
-                  data.forEach(q => {
+              const baseUrl = window.location.origin;
+              const url = `${baseUrl}/api/stocks?symbols=${batch.join(",")}`;
+              const r = await fetch(url, { signal: AbortSignal.timeout(25000) });
+              if (r.ok) {
+                const data = await r.json();
+                if (data?.quoteResponse?.result?.length > 0) {
+                  data.quoteResponse.result.forEach(q => {
                     if (!q.symbol) return;
                     results[q.symbol] = {
-                      usd: q.price || 0,
-                      usd_24h_change: q.changesPercentage || 0,
+                      usd: q.regularMarketPrice || 0,
+                      usd_24h_change: q.regularMarketChangePercent || 0,
                       usd_7d_change: 0,
                       usd_market_cap: q.marketCap || 0,
                       currency: "$",
                       market: "us",
                     };
                   });
-                  if (!stockSource) stockSource = "FMP";
+                  if (!stockSource) stockSource = "Yahoo+TwelveData+Finnhub";
                 }
               }
-            } catch (e) {}
+            } catch (e) { console.warn("US stocks error:", e.message); }
             if (i + 50 < usStocks.length) await new Promise(r => setTimeout(r, 300));
           }
         }
