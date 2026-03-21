@@ -768,7 +768,7 @@ export default function CryptoPortfolio() {
   const [ncBuyPrice, setNcBuyPrice] = useState("");
   const [ncSection, setNcSection] = useState("Genel");
   const [sections, setSections] = useState(() => {
-    try { const s = localStorage.getItem("ip_sections"); return s ? JSON.parse(s) : ["Genel"]; } catch(e) { return ["Genel"]; }
+    try { const s = localStorage.getItem("ip_sections"); return s ? JSON.parse(s) : []; } catch(e) { return []; }
   });
   const [newSectionInput, setNewSectionInput] = useState("");
   const [dragIdx, setDragIdx] = useState(null); // index of item being dragged
@@ -1423,7 +1423,7 @@ export default function CryptoPortfolio() {
   const addCoin = () => {
     if (!ncCoin || !ncAmount || !ncBuyPrice) return;
     const coinId = ncCoin.id;
-    const section = ncSection || "Genel";
+    const section = ncSection || "";
 
     if (!knownCoins.find(c => c.id === coinId)) {
       setKnownCoins(prev => [...prev, { id: coinId, symbol: ncCoin.symbol, name: ncCoin.name, market: ncCoin.market, currency: ncCoin.currency }]);
@@ -1446,7 +1446,7 @@ export default function CryptoPortfolio() {
       }
     }
 
-    setNcCoin(null); setNcAmount(""); setNcBuyPrice(""); setNcSection("Genel");
+    setNcCoin(null); setNcAmount(""); setNcBuyPrice(""); setNcSection("");
     setShowAdd(false);
   };
 
@@ -1831,7 +1831,7 @@ export default function CryptoPortfolio() {
     setPortfolios(p);
     if (ls) setSections(JSON.parse(ls));
     // Firebase'i de güncelle (sync)
-    savePortfolios(user.uid, p, ls ? JSON.parse(ls) : ["Genel"]);
+    savePortfolios(user.uid, p, ls ? JSON.parse(ls) : []);
   } else {
     // localStorage yok → Firebase'den al
     const data = await getUserData(user.uid);
@@ -1923,32 +1923,34 @@ export default function CryptoPortfolio() {
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap",position:"relative"}}>
             <div style={{display:"flex",gap:4,flex:1,overflowX:"auto",paddingBottom:4}}>
               {Object.keys(portfolios).map(name=>(
-                <button key={name} onClick={()=>setActivePortfolio(name)}
-                  onDoubleClick={()=>{setRenameTarget(name);setRenameValue(name);}}
-                  style={{padding:"8px 16px",background:activePortfolio===name?"linear-gradient(135deg,#9333EA22,#D4A01711)":T.bgCardSolid,border:`1px solid ${activePortfolio===name?"#9333EA44":T.borderLight}`,color:activePortfolio===name?"#9333EA":T.textSecondary,borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:activePortfolio===name?600:400,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}>
-                  {name}
-                  <span style={{fontSize:11,color:T.textMuted}}>({(portfolios[name]||[]).length})</span>
-                </button>
+                <div key={name} style={{display:"flex",alignItems:"center",gap:1}}>
+                  <button onClick={()=>setActivePortfolio(name)}
+                    style={{padding:"8px 14px",background:activePortfolio===name?"linear-gradient(135deg,#9333EA22,#D4A01711)":T.bgCardSolid,border:`1px solid ${activePortfolio===name?"#9333EA44":T.borderLight}`,color:activePortfolio===name?"#9333EA":T.textSecondary,borderRadius:"8px 0 0 8px",cursor:"pointer",fontSize:13,fontWeight:activePortfolio===name?600:400,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
+                    {name} <span style={{fontSize:11,color:T.textMuted}}>({(portfolios[name]||[]).length})</span>
+                  </button>
+                  <button onClick={()=>{setRenameTarget(name);setRenameValue(name);}}
+                    title="Yeniden Adlandır"
+                    style={{padding:"8px 7px",background:activePortfolio===name?"linear-gradient(135deg,#9333EA22,#D4A01711)":T.bgCardSolid,border:`1px solid ${activePortfolio===name?"#9333EA44":T.borderLight}`,borderLeft:"none",color:activePortfolio===name?"#9333EA":T.textMuted,borderRadius:"0 8px 8px 0",cursor:"pointer",fontSize:11}}>✎</button>
+                </div>
               ))}
             </div>
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>setShowPortfolioMenu(!showPortfolioMenu)}
                 style={{padding:"8px 12px",background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,color:T.textSecondary,borderRadius:8,cursor:"pointer",fontSize:13,fontFamily:"'Inter',sans-serif"}}>+ Yeni Portföy</button>
-              {Object.keys(portfolios).length>1&&<button onClick={()=>{
+              <button onClick={()=>{
                 if(window.confirm(`"${activePortfolio}" portföyünü silmek istediğinize emin misiniz?`)){
                   const nextPortfolios = {...portfolios};
                   delete nextPortfolios[activePortfolio];
-                  const nextActive = Object.keys(portfolios).find(k=>k!==activePortfolio)||Object.keys(nextPortfolios)[0]||"Ana Portföy";
+                  // Son portföy silindiyse boş "Ana Portföy" oluştur
+                  if (Object.keys(nextPortfolios).length === 0) nextPortfolios["Ana Portföy"] = [];
+                  const nextActive = Object.keys(nextPortfolios)[0];
                   setPortfolios(nextPortfolios);
                   setActivePortfolio(nextActive);
-                  // Direkt localStorage + Firebase'e yaz
                   try { localStorage.setItem("ip_portfolios", JSON.stringify(nextPortfolios)); } catch(e) {}
                   const fu = firebaseUserRef.current;
-                  if (fu && !fu.isAnonymous) {
-                    savePortfolios(fu.uid, nextPortfolios, sections);
-                  }
+                  if (fu && !fu.isAnonymous) savePortfolios(fu.uid, nextPortfolios, sections);
                 }
-              }} style={{padding:"8px 12px",background:T.redGlow,border:`1px solid ${T.red}33`,color:T.red,borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Inter',sans-serif"}}>🗑</button>}
+              }} style={{padding:"8px 12px",background:T.redGlow,border:`1px solid ${T.red}33`,color:T.red,borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Inter',sans-serif"}}>🗑</button>
             </div>
 
             {/* New Portfolio Input */}
@@ -1975,7 +1977,15 @@ export default function CryptoPortfolio() {
                   style={{width:"100%",padding:"10px 12px",background:T.bg,border:`1px solid ${T.borderLight}`,borderRadius:8,color:T.text,fontSize:14,outline:"none",marginBottom:12,fontFamily:"'Inter',sans-serif"}}/>
                 <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                   <button onClick={()=>setRenameTarget(null)} style={{padding:"8px 16px",background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,borderRadius:6,color:T.textSecondary,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>İptal</button>
-                  <button onClick={()=>{if(renameValue.trim()&&renameValue!==renameTarget){setPortfolios(prev=>{const next={};Object.entries(prev).forEach(([k,v])=>{next[k===renameTarget?renameValue.trim():k]=v;});return next;});if(activePortfolio===renameTarget)setActivePortfolio(renameValue.trim());setRenameTarget(null);}}}
+                  <button onClick={()=>{if(renameValue.trim()&&renameValue!==renameTarget){
+                    const next={};Object.entries(portfolios).forEach(([k,v])=>{next[k===renameTarget?renameValue.trim():k]=v;});
+                    setPortfolios(next);
+                    if(activePortfolio===renameTarget)setActivePortfolio(renameValue.trim());
+                    setRenameTarget(null);
+                    try { localStorage.setItem("ip_portfolios", JSON.stringify(next)); } catch(e) {}
+                    const fu = firebaseUserRef.current;
+                    if (fu && !fu.isAnonymous) savePortfolios(fu.uid, next, sections);
+                  }}}
                     style={{padding:"8px 16px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:6,color:T.text,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Kaydet</button>
                 </div>
               </div>
@@ -1993,14 +2003,14 @@ export default function CryptoPortfolio() {
               <div style={{marginTop:8}}>{pieData.map((item,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${T.bgCardSolid}`}}><span style={{width:8,height:8,borderRadius:2,background:item.color,flexShrink:0}}/><span style={{flex:1,fontSize:12,color:T.textSecondary}}>{item.name}</span><span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>{totVal>0?((item.value/totVal)*100).toFixed(1):0}%</span></div>)}</div></>:<div style={{textAlign:"center",padding:40,color:T.textMuted}}>Portföye varlık ekleyin</div>}
             </div>
             <div style={st.card}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h3 style={{fontSize:15,fontWeight:600}}>Varlıklar</h3><button onClick={()=>{setEditIdx(null);setNcCoin(null);setNcAmount("");setNcBuyPrice("");setNcSection("Genel");setShowAdd(true);}} style={{padding:"7px 14px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:8,color:T.text,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Ekle</button></div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h3 style={{fontSize:15,fontWeight:600}}>Varlıklar</h3><button onClick={()=>{setEditIdx(null);setNcCoin(null);setNcAmount("");setNcBuyPrice("");setNcSection("");setShowAdd(true);}} style={{padding:"7px 14px",background:"linear-gradient(135deg,#9333EA,#D4A017)",border:"none",borderRadius:8,color:T.text,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Ekle</button></div>
               <div style={{overflowX:"auto"}}>
                 {pData.length===0?<div style={{textAlign:"center",padding:40,color:T.textMuted}}><div style={{fontSize:48,marginBottom:12}}>📊</div>Henüz varlık yok</div>:
                 <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"auto"}}><thead><tr>{["","Coin","Fiyat","24s","Miktar","Değer","Ağırlık","K/Z","İşlem"].map((h,i)=><th key={i} style={{...st.th,textAlign:i<=1?"left":i===8?"center":"right",width:i===0?30:undefined}}>{h}</th>)}</tr></thead><tbody>
                 {(()=>{
                   const grouped = {};
                   pData.forEach((item, i) => {
-                    const sec = item.section || "Genel";
+                    const sec = item.section || "";
                     if (!grouped[sec]) grouped[sec] = [];
                     grouped[sec].push({ ...item, origIdx: i });
                   });
