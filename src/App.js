@@ -1822,7 +1822,28 @@ export default function CryptoPortfolio() {
   };
 
   if (showSplash) return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  if (!isLoggedIn) return <AuthScreen onLogin={async (user) => { const name = user.displayName || user.email?.split("@")[0] || (user.isAnonymous ? "Misafir" : "Kullanici"); setCurrentUser(name); setFirebaseUser(user); firebaseUserRef.current = user; if (!user.isAnonymous) { try { const data = await getUserData(user.uid); if (data && data.portfolios) { setPortfolios(data.portfolios); if (data.sections) setSections(data.sections); } else { const lp = localStorage.getItem("ip_portfolios"); if (lp) { const p = JSON.parse(lp); setPortfolios(p); await savePortfolios(user.uid, p, sections); } } } catch(e) { console.error("Firestore:", e); } } setDataLoaded(true); dataLoadedRef.current = true; setIsLoggedIn(true); }} />;
+  if (!isLoggedIn) return <AuthScreen onLogin={async (user) => { const name = user.displayName || user.email?.split("@")[0] || (user.isAnonymous ? "Misafir" : "Kullanici"); setCurrentUser(name); setFirebaseUser(user); firebaseUserRef.current = user; if (!user.isAnonymous) { try {
+  const lp = localStorage.getItem("ip_portfolios");
+  const ls = localStorage.getItem("ip_sections");
+  if (lp) {
+    // localStorage var → direkt kullan (her zaman en güncel)
+    const p = JSON.parse(lp);
+    setPortfolios(p);
+    if (ls) setSections(JSON.parse(ls));
+    // Firebase'i de güncelle (sync)
+    savePortfolios(user.uid, p, ls ? JSON.parse(ls) : ["Genel"]);
+  } else {
+    // localStorage yok → Firebase'den al
+    const data = await getUserData(user.uid);
+    if (data && data.portfolios) {
+      setPortfolios(data.portfolios);
+      if (data.sections) setSections(data.sections);
+      // localStorage'a kaydet
+      try { localStorage.setItem("ip_portfolios", JSON.stringify(data.portfolios)); } catch(e) {}
+      if (data.sections) try { localStorage.setItem("ip_sections", JSON.stringify(data.sections)); } catch(e) {}
+    }
+  }
+} catch(e) { console.error("Firestore:", e); } } setDataLoaded(true); dataLoadedRef.current = true; setIsLoggedIn(true); }} />;
 
   // Loading artık sayfayı bloklamaz — skeleton gösterilir
   const isLoading = loading && Object.keys(prices).length === 0;
