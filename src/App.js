@@ -1915,8 +1915,17 @@ export default function CryptoPortfolio() {
                 style={{padding:"8px 12px",background:T.bgCardSolid,border:`1px solid ${T.borderLight}`,color:T.textSecondary,borderRadius:8,cursor:"pointer",fontSize:13,fontFamily:"'Inter',sans-serif"}}>+ Yeni Portföy</button>
               {Object.keys(portfolios).length>1&&<button onClick={()=>{
                 if(window.confirm(`"${activePortfolio}" portföyünü silmek istediğinize emin misiniz?`)){
-                  setPortfolios(prev=>{const next={...prev};delete next[activePortfolio];return next;});
-                  setActivePortfolio(Object.keys(portfolios).find(k=>k!==activePortfolio)||"Ana Portföy");
+                  const nextPortfolios = {...portfolios};
+                  delete nextPortfolios[activePortfolio];
+                  const nextActive = Object.keys(portfolios).find(k=>k!==activePortfolio)||Object.keys(nextPortfolios)[0]||"Ana Portföy";
+                  setPortfolios(nextPortfolios);
+                  setActivePortfolio(nextActive);
+                  // Direkt localStorage + Firebase'e yaz
+                  try { localStorage.setItem("ip_portfolios", JSON.stringify(nextPortfolios)); } catch(e) {}
+                  const fu = firebaseUserRef.current;
+                  if (fu && !fu.isAnonymous) {
+                    savePortfolios(fu.uid, nextPortfolios, sections);
+                  }
                 }
               }} style={{padding:"8px 12px",background:T.redGlow,border:`1px solid ${T.red}33`,color:T.red,borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Inter',sans-serif"}}>🗑</button>}
             </div>
